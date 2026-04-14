@@ -1,0 +1,1286 @@
+<!-- Chatrix Call - With Call History -->
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chatrix Call</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e94560'%3E%3Cpath d='M12 6c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z'/%3E%3Ccircle cx='12' cy='13' r='3'/%3E%3C/svg%3E"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, sans-serif;
+        background: #1a1a2e;
+        color: white;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      h2 {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #e94560;
+      }
+
+      /* Name Modal */
+      .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.95);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+      }
+      .modal-content {
+        background: #16213e;
+        padding: 40px;
+        border-radius: 20px;
+        text-align: center;
+        min-width: 300px;
+      }
+      .modal-content h3 {
+        margin-bottom: 20px;
+        color: #e94560;
+      }
+      .modal-content input {
+        padding: 15px;
+        font-size: 18px;
+        border: none;
+        border-radius: 10px;
+        width: 100%;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      .modal-content button {
+        padding: 12px 30px;
+        font-size: 18px;
+        background: #e94560;
+        color: white;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+      }
+      .modal-content button:hover {
+        background: #c73e54;
+      }
+
+      .id-section {
+        background: #16213e;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      .your-id {
+        font-size: 28px;
+        font-weight: bold;
+        margin: 10px 0;
+      }
+      .your-id span {
+        background: #0f3460;
+        padding: 10px 20px;
+        border-radius: 5px;
+        font-family: monospace;
+      }
+
+      .call-section {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        margin: 15px 0;
+        flex-wrap: wrap;
+      }
+      input {
+        padding: 10px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        width: 200px;
+        text-align: center;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        background: #e94560;
+        color: white;
+        font-weight: bold;
+      }
+      button:hover {
+        background: #c73e54;
+      }
+
+      .call-timer {
+        background: #0f3460;
+        padding: 10px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 15px;
+        font-size: 18px;
+        font-weight: bold;
+      }
+      .call-timer span {
+        color: #e94560;
+      }
+
+      .main-content {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+
+      .video-section {
+        flex: 2;
+        min-width: 350px;
+      }
+      .video-box {
+        background: #16213e;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        margin-bottom: 15px;
+        position: relative;
+      }
+      video {
+        width: 100%;
+        height: 280px;
+        background: #0f3460;
+        border-radius: 8px;
+        object-fit: cover;
+      }
+
+      .name-overlay {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #e94560;
+        z-index: 10;
+      }
+
+      .screen-sharing-badge {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: #27ae60;
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: bold;
+        z-index: 10;
+      }
+
+      .video-placeholder {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: white;
+        font-size: 60px;
+        font-weight: bold;
+        background: rgba(0, 0, 0, 0.8);
+        width: 100px;
+        height: 100px;
+        line-height: 100px;
+        border-radius: 50%;
+        z-index: 5;
+      }
+
+      .hangup-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 8px;
+        z-index: 20;
+      }
+      .hangup-overlay span {
+        color: white;
+        font-size: 20px;
+        font-weight: bold;
+        background: #c0392b;
+        padding: 12px 24px;
+        border-radius: 10px;
+      }
+
+      /* Chat Section */
+      .chat-section {
+        flex: 1;
+        min-width: 280px;
+        background: #16213e;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      .chat-header {
+        padding: 15px;
+        background: #0f3460;
+        border-radius: 10px 10px 0 0;
+        text-align: center;
+        font-weight: bold;
+        color: #e94560;
+      }
+      .chat-messages {
+        flex: 1;
+        height: 350px;
+        overflow-y: auto;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .message {
+        padding: 8px 12px;
+        border-radius: 10px;
+        max-width: 85%;
+        word-wrap: break-word;
+      }
+      .message-mine {
+        background: #e94560;
+        align-self: flex-end;
+        color: white;
+      }
+      .message-theirs {
+        background: #0f3460;
+        align-self: flex-start;
+        color: white;
+      }
+      .message-sender {
+        font-size: 11px;
+        opacity: 0.7;
+        margin-bottom: 3px;
+      }
+      .chat-input-area {
+        display: flex;
+        padding: 15px;
+        gap: 10px;
+        border-top: 1px solid #0f3460;
+      }
+      .chat-input-area input {
+        flex: 1;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        background: #0f3460;
+        color: white;
+      }
+
+      /* Call History Section */
+      .history-section {
+        flex: 0.8;
+        min-width: 250px;
+        background: #16213e;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+      }
+      .history-header {
+        padding: 15px;
+        background: #0f3460;
+        border-radius: 10px 10px 0 0;
+        text-align: center;
+        font-weight: bold;
+        color: #e94560;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .clear-history {
+        background: #c0392b;
+        padding: 5px 10px;
+        font-size: 12px;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      .clear-history:hover {
+        background: #a93226;
+      }
+      .history-list {
+        flex: 1;
+        height: 350px;
+        overflow-y: auto;
+        padding: 10px;
+      }
+      .history-item {
+        background: #0f3460;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .history-item:hover {
+        background: #1a4a6e;
+      }
+      .history-name {
+        font-weight: bold;
+        color: #e94560;
+        font-size: 14px;
+      }
+      .history-details {
+        font-size: 11px;
+        color: #aaa;
+        margin-top: 5px;
+        display: flex;
+        justify-content: space-between;
+      }
+      .history-duration {
+        color: #27ae60;
+      }
+      .history-missed {
+        color: #e94560;
+      }
+      .history-incoming {
+        color: #3498db;
+      }
+      .history-outgoing {
+        color: #f39c12;
+      }
+      .no-history {
+        text-align: center;
+        color: #aaa;
+        padding: 20px;
+      }
+
+      .controls {
+        text-align: center;
+        margin-top: 20px;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .controls button {
+        margin: 0;
+        background: #0f3460;
+      }
+      .controls button.screen-share {
+        background: #27ae60;
+      }
+      .controls button.screen-share.active {
+        background: #e67e22;
+      }
+
+      .status {
+        text-align: center;
+        margin-top: 15px;
+        padding: 10px;
+        background: #0f3460;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+
+      .back-button {
+        text-align: center;
+        margin-top: 20px;
+      }
+      .back-button a {
+        display: inline-block;
+        padding: 12px 30px;
+        background: #27ae60;
+        color: white;
+        text-decoration: none;
+        border-radius: 8px;
+      }
+
+      @media (max-width: 1000px) {
+        .main-content {
+          flex-direction: column;
+        }
+        .chat-messages {
+          height: 200px;
+        }
+        .history-list {
+          height: 200px;
+        }
+        video {
+          height: 220px;
+        }
+        .video-placeholder {
+          width: 70px;
+          height: 70px;
+          line-height: 70px;
+          font-size: 40px;
+        }
+      }
+    </style>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Chatrix Call</h2>
+
+      <div class="id-section">
+        <p>Your Call ID (share this):</p>
+        <div class="your-id"><span id="myId">Connecting...</span></div>
+        <button id="copyIdBtn">Copy ID</button>
+
+        <div class="call-section">
+          <input
+            type="text"
+            id="remoteId"
+            placeholder="Enter friend's Call ID"
+          />
+          <button id="callBtn">Call</button>
+          <button id="hangupBtn" style="background: #c0392b">Hang Up</button>
+        </div>
+      </div>
+
+      <div class="call-timer" id="callTimer" style="display: none">
+        Call Duration: <span id="timerDisplay">00:00</span>
+      </div>
+
+      <div class="main-content">
+        <div class="video-section">
+          <div class="video-box">
+            <video id="localVideo" autoplay muted playsinline></video>
+            <div id="localNameOverlay" class="name-overlay"></div>
+            <div
+              id="localScreenBadge"
+              class="screen-sharing-badge"
+              style="display: none"
+            >
+              Sharing Screen
+            </div>
+            <div
+              id="localPlaceholder"
+              class="video-placeholder"
+              style="display: none"
+            ></div>
+            <div
+              id="localHangupOverlay"
+              class="hangup-overlay"
+              style="display: none"
+            >
+              <span id="localHangupMessage">Call ended</span>
+            </div>
+          </div>
+          <div class="video-box">
+            <video id="remoteVideo" autoplay playsinline></video>
+            <div id="remoteNameOverlay" class="name-overlay"></div>
+            <div
+              id="remoteScreenBadge"
+              class="screen-sharing-badge"
+              style="display: none"
+            >
+              Sharing Screen
+            </div>
+            <div
+              id="remotePlaceholder"
+              class="video-placeholder"
+              style="display: none"
+            ></div>
+            <div
+              id="remoteHangupOverlay"
+              class="hangup-overlay"
+              style="display: none"
+            >
+              <span id="remoteHangupMessage">Call ended</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chat Section -->
+        <div class="chat-section">
+          <div class="chat-header">Chat</div>
+          <div class="chat-messages" id="chatMessages">
+            <div style="text-align: center; color: #aaa; padding: 20px">
+              Start a call to chat
+            </div>
+          </div>
+          <div class="chat-input-area">
+            <input
+              type="text"
+              id="chatInput"
+              placeholder="Type a message..."
+              disabled
+            />
+            <button id="sendChatBtn" disabled>Send</button>
+          </div>
+        </div>
+
+        <!-- Call History Section -->
+        <div class="history-section">
+          <div class="history-header">
+            Call History
+            <span id="clearHistoryBtn" class="clear-history">Clear</span>
+          </div>
+          <div class="history-list" id="historyList">
+            <div class="no-history">No calls yet</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="toggleVideoBtn">Mute Video</button>
+        <button id="toggleAudioBtn">Mute Audio</button>
+        <button id="screenShareBtn" class="screen-share">Share Screen</button>
+      </div>
+
+      <div class="status" id="status">
+        Ready - Share your ID to start a call
+      </div>
+
+      <div class="back-button">
+        <a href="#" id="backLink">← Back</a>
+      </div>
+    </div>
+
+    <!-- Name Modal -->
+    <div id="nameModal" class="modal">
+      <div class="modal-content">
+        <h3>Enter Your Name</h3>
+        <input
+          type="text"
+          id="userName"
+          placeholder="Your name"
+          maxlength="20"
+        />
+        <button id="saveNameBtn">Start Calling</button>
+      </div>
+    </div>
+
+    <script>
+      // CHANGE THIS TO YOUR BACK LINK
+      document.getElementById("backLink").href = "index.html";
+
+      let myName = "";
+      let myInitial = "";
+      let friendName = "Friend";
+      let friendInitial = "F";
+      let callActive = false;
+      let callStartTime = null;
+      let callTimerInterval = null;
+      let isScreenSharing = false;
+      let screenStream = null;
+      let currentCallStartTime = null;
+
+      // Call History Array
+      let callHistory = [];
+
+      // Load history from localStorage
+      function loadHistory() {
+        var saved = localStorage.getItem("chatrix_call_history");
+        if (saved) {
+          try {
+            callHistory = JSON.parse(saved);
+            renderHistory();
+          } catch (e) {
+            callHistory = [];
+          }
+        }
+      }
+
+      // Save history to localStorage
+      function saveHistory() {
+        localStorage.setItem(
+          "chatrix_call_history",
+          JSON.stringify(callHistory),
+        );
+      }
+
+      // Add call to history
+      function addToHistory(friend, duration, type, status) {
+        var now = new Date();
+        var timeStr = now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        var dateStr = now.toLocaleDateString();
+
+        callHistory.unshift({
+          id: Date.now(),
+          friendName: friend,
+          duration: duration,
+          durationSec: duration,
+          type: type, // 'incoming' or 'outgoing'
+          status: status, // 'completed', 'missed', 'ended'
+          time: timeStr,
+          date: dateStr,
+          timestamp: now.getTime(),
+        });
+
+        // Keep only last 50 calls
+        if (callHistory.length > 50) {
+          callHistory = callHistory.slice(0, 50);
+        }
+
+        saveHistory();
+        renderHistory();
+      }
+
+      // Format duration
+      function formatDuration(seconds) {
+        if (!seconds || seconds === 0) return "0:00";
+        var mins = Math.floor(seconds / 60);
+        var secs = seconds % 60;
+        return mins + ":" + (secs < 10 ? "0" + secs : secs);
+      }
+
+      // Render history list
+      function renderHistory() {
+        var historyList = document.getElementById("historyList");
+        if (!historyList) return;
+
+        if (callHistory.length === 0) {
+          historyList.innerHTML = '<div class="no-history">No calls yet</div>';
+          return;
+        }
+
+        var html = "";
+        for (var i = 0; i < callHistory.length; i++) {
+          var call = callHistory[i];
+          var typeIcon = "";
+          var typeClass = "";
+
+          if (call.type === "outgoing") {
+            typeIcon = "📞 ";
+            typeClass = "history-outgoing";
+          } else {
+            typeIcon = "📞 ";
+            typeClass = "history-incoming";
+          }
+
+          var statusText = "";
+          var statusClass = "";
+          if (call.status === "missed") {
+            statusText = "Missed";
+            statusClass = "history-missed";
+          } else if (call.status === "completed") {
+            statusText = formatDuration(call.durationSec);
+            statusClass = "history-duration";
+          } else {
+            statusText = "Ended";
+            statusClass = "";
+          }
+
+          html += '<div class="history-item" data-id="' + call.id + '">';
+          html +=
+            '<div class="history-name">' +
+            typeIcon +
+            call.friendName +
+            "</div>";
+          html += '<div class="history-details">';
+          html += "<span>" + call.date + " " + call.time + "</span>";
+          html += '<span class="' + statusClass + '">' + statusText + "</span>";
+          html += "</div></div>";
+        }
+
+        historyList.innerHTML = html;
+
+        // Add click handlers to call history items
+        var items = historyList.querySelectorAll(".history-item");
+        for (var j = 0; j < items.length; j++) {
+          items[j].onclick = (function (index) {
+            return function () {
+              var call = callHistory[index];
+              if (call && call.friendName) {
+                document.getElementById("remoteId").value = call.friendName;
+                updateStatus("Past ID filled: " + call.friendName, false);
+              }
+            };
+          })(j);
+        }
+      }
+
+      // Clear history
+      function clearHistory() {
+        if (confirm("Clear all call history?")) {
+          callHistory = [];
+          saveHistory();
+          renderHistory();
+          updateStatus("Call history cleared", false);
+        }
+      }
+
+      function generateShortId() {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
+        let id = "";
+        for (let i = 0; i < 6; i++) {
+          id += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        return id;
+      }
+
+      const customId = generateShortId();
+      let peer = null;
+      let localStream = null;
+      let currentCall = null;
+      let videoEnabled = true;
+      let audioEnabled = true;
+      let dataConnection = null;
+
+      // DOM elements
+      const localVideo = document.getElementById("localVideo");
+      const remoteVideo = document.getElementById("remoteVideo");
+      const localNameOverlay = document.getElementById("localNameOverlay");
+      const remoteNameOverlay = document.getElementById("remoteNameOverlay");
+      const localScreenBadge = document.getElementById("localScreenBadge");
+      const remoteScreenBadge = document.getElementById("remoteScreenBadge");
+      const localPlaceholder = document.getElementById("localPlaceholder");
+      const remotePlaceholder = document.getElementById("remotePlaceholder");
+      const localHangupOverlay = document.getElementById("localHangupOverlay");
+      const remoteHangupOverlay = document.getElementById(
+        "remoteHangupOverlay",
+      );
+      const localHangupMessage = document.getElementById("localHangupMessage");
+      const remoteHangupMessage = document.getElementById(
+        "remoteHangupMessage",
+      );
+      const myIdSpan = document.getElementById("myId");
+      const remoteIdInput = document.getElementById("remoteId");
+      const callBtn = document.getElementById("callBtn");
+      const hangupBtn = document.getElementById("hangupBtn");
+      const toggleVideoBtn = document.getElementById("toggleVideoBtn");
+      const toggleAudioBtn = document.getElementById("toggleAudioBtn");
+      const screenShareBtn = document.getElementById("screenShareBtn");
+      const statusDiv = document.getElementById("status");
+      const copyIdBtn = document.getElementById("copyIdBtn");
+      const callTimerDiv = document.getElementById("callTimer");
+      const timerDisplay = document.getElementById("timerDisplay");
+      const chatMessages = document.getElementById("chatMessages");
+      const chatInput = document.getElementById("chatInput");
+      const sendChatBtn = document.getElementById("sendChatBtn");
+      const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+
+      // Name modal
+      const nameModal = document.getElementById("nameModal");
+      const userNameInput = document.getElementById("userName");
+      const saveNameBtn = document.getElementById("saveNameBtn");
+
+      saveNameBtn.onclick = function () {
+        myName = userNameInput.value.trim();
+        if (myName === "") {
+          myName = "Guest";
+        }
+        myInitial = myName.charAt(0).toUpperCase();
+        localNameOverlay.innerText = myName;
+        nameModal.style.display = "none";
+        updateStatus(
+          "Welcome " + myName + "! Share your ID to start a call",
+          false,
+        );
+        startCamera();
+      };
+
+      userNameInput.onkeypress = function (e) {
+        if (e.key === "Enter") {
+          saveNameBtn.click();
+        }
+      };
+
+      // Timer functions
+      function startCallTimer() {
+        currentCallStartTime = Date.now();
+        callStartTime = Date.now();
+        callTimerDiv.style.display = "block";
+        if (callTimerInterval) clearInterval(callTimerInterval);
+        callTimerInterval = setInterval(function () {
+          if (!callStartTime) return;
+          var elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+          var minutes = Math.floor(elapsed / 60);
+          var seconds = elapsed % 60;
+          timerDisplay.innerText =
+            (minutes < 10 ? "0" + minutes : minutes) +
+            ":" +
+            (seconds < 10 ? "0" + seconds : seconds);
+        }, 1000);
+      }
+
+      function stopCallTimer() {
+        if (callTimerInterval) {
+          clearInterval(callTimerInterval);
+          callTimerInterval = null;
+        }
+        callTimerDiv.style.display = "none";
+        timerDisplay.innerText = "00:00";
+
+        // Calculate duration for history
+        if (currentCallStartTime) {
+          var duration = Math.floor((Date.now() - currentCallStartTime) / 1000);
+          return duration;
+        }
+        return 0;
+      }
+
+      // Chat functions
+      function addChatMessage(sender, message, isMine) {
+        if (
+          chatMessages.children.length === 1 &&
+          chatMessages.children[0].innerText.includes("Start a call")
+        ) {
+          chatMessages.innerHTML = "";
+        }
+        var msgDiv = document.createElement("div");
+        msgDiv.className =
+          "message " + (isMine ? "message-mine" : "message-theirs");
+        msgDiv.innerHTML =
+          '<div class="message-sender">' +
+          sender +
+          "</div><div>" +
+          message +
+          "</div>";
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+      }
+
+      function sendChatMessage() {
+        var message = chatInput.value.trim();
+        if (!message || !dataConnection || !dataConnection.open) return;
+
+        dataConnection.send({
+          type: "chat",
+          message: message,
+          sender: myName,
+        });
+
+        addChatMessage(myName, message, true);
+        chatInput.value = "";
+      }
+
+      function enableChat(enable) {
+        chatInput.disabled = !enable;
+        sendChatBtn.disabled = !enable;
+        if (enable) {
+          chatInput.placeholder = "Type a message...";
+        } else {
+          chatInput.placeholder = "Start a call to chat";
+        }
+      }
+
+      function showLocalHangupMessage(msg) {
+        localHangupMessage.innerText = msg;
+        localHangupOverlay.style.display = "flex";
+        setTimeout(function () {
+          localHangupOverlay.style.display = "none";
+        }, 3000);
+      }
+
+      function showRemoteHangupMessage(msg) {
+        remoteHangupMessage.innerText = msg;
+        remoteHangupOverlay.style.display = "flex";
+        setTimeout(function () {
+          remoteHangupOverlay.style.display = "none";
+        }, 3000);
+      }
+
+      function updateStatus(msg, isError) {
+        statusDiv.innerHTML = isError ? "❌ " + msg : "✅ " + msg;
+        statusDiv.style.background = isError ? "#c0392b" : "#0f3460";
+      }
+
+      copyIdBtn.onclick = function () {
+        navigator.clipboard.writeText(customId);
+        updateStatus("Call ID copied!", false);
+      };
+
+      function updateLocalPlaceholder() {
+        if (!videoEnabled && !isScreenSharing) {
+          localPlaceholder.style.display = "flex";
+          localPlaceholder.innerText = myInitial;
+        } else {
+          localPlaceholder.style.display = "none";
+        }
+      }
+
+      function updateRemotePlaceholder(show, initial) {
+        if (show) {
+          remotePlaceholder.style.display = "flex";
+          remotePlaceholder.innerText = initial || friendInitial;
+        } else {
+          remotePlaceholder.style.display = "none";
+        }
+      }
+
+      // Screen Sharing Functions
+      async function startScreenShare() {
+        try {
+          screenStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: false,
+          });
+
+          screenStream.oninactive = function () {
+            if (isScreenSharing) stopScreenShare();
+          };
+
+          if (currentCall && localStream) {
+            const screenTrack = screenStream.getVideoTracks()[0];
+            const sender = currentCall.peerConnection
+              .getSenders()
+              .find(function (s) {
+                return s.track && s.track.kind === "video";
+              });
+            if (sender) {
+              sender.replaceTrack(screenTrack);
+            }
+          }
+
+          localVideo.srcObject = screenStream;
+          isScreenSharing = true;
+          screenShareBtn.innerHTML = " Stop Sharing";
+          screenShareBtn.classList.add("active");
+          localScreenBadge.style.display = "block";
+          localPlaceholder.style.display = "none";
+          updateStatus("Screen sharing started", false);
+
+          if (dataConnection && dataConnection.open) {
+            dataConnection.send({ type: "screenShare", active: true });
+          }
+        } catch (err) {
+          updateStatus("Screen share cancelled", true);
+        }
+      }
+
+      async function stopScreenShare() {
+        if (screenStream) {
+          screenStream.getTracks().forEach(function (track) {
+            track.stop();
+          });
+          screenStream = null;
+        }
+
+        if (currentCall && localStream) {
+          const cameraTrack = localStream.getVideoTracks()[0];
+          if (cameraTrack) {
+            const sender = currentCall.peerConnection
+              .getSenders()
+              .find(function (s) {
+                return s.track && s.track.kind === "video";
+              });
+            if (sender) {
+              sender.replaceTrack(cameraTrack);
+            }
+          }
+        }
+
+        if (localStream) {
+          localVideo.srcObject = localStream;
+        }
+
+        isScreenSharing = false;
+        screenShareBtn.innerHTML = " Share Screen";
+        screenShareBtn.classList.remove("active");
+        localScreenBadge.style.display = "none";
+        updateLocalPlaceholder();
+        updateStatus("Screen sharing stopped", false);
+
+        if (dataConnection && dataConnection.open) {
+          dataConnection.send({ type: "screenShare", active: false });
+        }
+      }
+
+      function toggleScreenShare() {
+        if (!currentCall) {
+          updateStatus("Start a call first", true);
+          return;
+        }
+        if (isScreenSharing) {
+          stopScreenShare();
+        } else {
+          startScreenShare();
+        }
+      }
+
+      function startCamera() {
+        navigator.mediaDevices
+          .getUserMedia({ video: true, audio: true })
+          .then(function (stream) {
+            localStream = stream;
+            localVideo.srcObject = stream;
+            videoEnabled = true;
+            audioEnabled = true;
+            toggleVideoBtn.innerHTML = "Mute Video";
+            toggleAudioBtn.innerHTML = "Mute Audio";
+            updateLocalPlaceholder();
+            updateStatus("Camera ready - Your ID: " + customId, false);
+
+            initPeer();
+          })
+          .catch(function (err) {
+            updateStatus("Camera error: " + err.message, true);
+          });
+      }
+
+      function hangUp(isInitiator, isMissed) {
+        callActive = false;
+        var duration = stopCallTimer();
+        enableChat(false);
+
+        if (currentCallStartTime && duration > 0 && friendName !== "Friend") {
+          var status = isMissed ? "missed" : "completed";
+          addToHistory(
+            friendName,
+            duration,
+            isInitiator ? "outgoing" : "incoming",
+            status,
+          );
+        }
+
+        if (dataConnection && dataConnection.open) {
+          dataConnection.send({ type: "hangup", fromName: myName });
+        }
+
+        if (currentCall) {
+          currentCall.close();
+          currentCall = null;
+        }
+
+        if (dataConnection) {
+          dataConnection.close();
+          dataConnection = null;
+        }
+
+        if (isScreenSharing) {
+          stopScreenShare();
+        }
+
+        if (remoteVideo.srcObject) {
+          remoteVideo.srcObject = null;
+        }
+
+        updateRemotePlaceholder(true, friendInitial);
+        remoteNameOverlay.innerText = "";
+        remoteScreenBadge.style.display = "none";
+
+        if (isInitiator) {
+          showLocalHangupMessage("You hung up on " + friendName);
+          updateStatus("You hung up on " + friendName, false);
+        } else {
+          if (isMissed) {
+            showLocalHangupMessage("Missed call from " + friendName);
+            updateStatus("Missed call from " + friendName, false);
+          } else {
+            showLocalHangupMessage(friendName + " hung up");
+            updateStatus(friendName + " hung up", false);
+          }
+        }
+
+        chatMessages.innerHTML =
+          '<div style="text-align: center; color: #aaa; padding: 20px;">Start a call to chat</div>';
+        currentCallStartTime = null;
+      }
+
+      function setupDataConnection(conn) {
+        conn.on("open", function () {
+          conn.send({ type: "name", name: myName, initial: myInitial });
+        });
+
+        conn.on("data", function (data) {
+          if (data.type === "name") {
+            friendName = data.name;
+            friendInitial = data.initial;
+            remoteNameOverlay.innerText = friendName;
+            updateRemotePlaceholder(true, friendInitial);
+            updateStatus("Connected with " + friendName, false);
+          } else if (data.type === "hangup") {
+            if (callActive) hangUp(false, false);
+          } else if (data.type === "chat") {
+            addChatMessage(data.sender, data.message, false);
+          } else if (data.type === "screenShare") {
+            if (data.active) {
+              remoteScreenBadge.style.display = "block";
+              updateStatus(friendName + " is sharing their screen", false);
+            } else {
+              remoteScreenBadge.style.display = "none";
+              updateStatus(friendName + " stopped sharing screen", false);
+            }
+          } else if (data.type === "videoToggle") {
+            if (data.enabled === false) {
+              remotePlaceholder.style.display = "flex";
+              remotePlaceholder.innerText = friendInitial;
+            } else {
+              remotePlaceholder.style.display = "none";
+            }
+          }
+        });
+
+        conn.on("close", function () {
+          if (callActive) hangUp(false, false);
+        });
+      }
+
+      function initPeer() {
+        peer = new Peer(customId);
+
+        peer.on("open", function (id) {
+          myIdSpan.innerText = id;
+        });
+
+        peer.on("connection", function (conn) {
+          dataConnection = conn;
+          setupDataConnection(conn);
+        });
+
+        peer.on("call", function (call) {
+          if (callActive) {
+            call.close();
+            return;
+          }
+
+          updateStatus("Incoming call from " + call.peer, false);
+
+          if (localStream) {
+            call.answer(localStream);
+            call.on("stream", function (remoteStream) {
+              remoteVideo.srcObject = remoteStream;
+              updateRemotePlaceholder(false, "");
+              updateStatus("Connected!", false);
+              callActive = true;
+              startCallTimer();
+              enableChat(true);
+            });
+            call.on("close", function () {
+              if (callActive) hangUp(false, false);
+            });
+            currentCall = call;
+
+            var conn = peer.connect(call.peer);
+            dataConnection = conn;
+            setupDataConnection(conn);
+          }
+        });
+
+        peer.on("error", function (err) {
+          console.error("Peer error:", err);
+          updateStatus("Connection error - refresh page", true);
+        });
+      }
+
+      callBtn.onclick = function () {
+        var remoteId = remoteIdInput.value.trim();
+        if (!remoteId) {
+          updateStatus("Enter a Call ID", true);
+          return;
+        }
+        if (remoteId === customId) {
+          updateStatus("Cannot call yourself!", true);
+          return;
+        }
+
+        if (currentCall) hangUp(true, false);
+
+        updateStatus("Calling " + remoteId + "...", false);
+
+        var conn = peer.connect(remoteId);
+        dataConnection = conn;
+        setupDataConnection(conn);
+
+        var call = peer.call(remoteId, localStream);
+        call.on("stream", function (remoteStream) {
+          remoteVideo.srcObject = remoteStream;
+          updateRemotePlaceholder(false, "");
+          updateStatus("Connected!", false);
+          callActive = true;
+          startCallTimer();
+          enableChat(true);
+        });
+        call.on("close", function () {
+          if (callActive) hangUp(false, false);
+        });
+        call.on("error", function (err) {
+          updateStatus("Call failed - ID invalid or friend offline", true);
+        });
+        currentCall = call;
+      };
+
+      hangupBtn.onclick = function () {
+        if (currentCall) {
+          hangUp(true, false);
+        } else {
+          updateStatus("No active call to hang up", true);
+        }
+      };
+
+      toggleVideoBtn.onclick = function () {
+        if (localStream && !isScreenSharing) {
+          var videoTrack = localStream.getVideoTracks()[0];
+          if (videoTrack) {
+            videoEnabled = !videoEnabled;
+            videoTrack.enabled = videoEnabled;
+            toggleVideoBtn.innerHTML = videoEnabled
+              ? "Mute Video"
+              : "Unmute Video";
+            updateLocalPlaceholder();
+            updateStatus(videoEnabled ? "Video on" : "Video off", false);
+
+            if (dataConnection && dataConnection.open) {
+              dataConnection.send({
+                type: "videoToggle",
+                enabled: videoEnabled,
+                initial: myInitial,
+              });
+            }
+          }
+        } else if (isScreenSharing) {
+          updateStatus("Stop screen sharing first to mute camera", true);
+        }
+      };
+
+      toggleAudioBtn.onclick = function () {
+        if (localStream) {
+          var audioTrack = localStream.getAudioTracks()[0];
+          if (audioTrack) {
+            audioEnabled = !audioEnabled;
+            audioTrack.enabled = audioEnabled;
+            toggleAudioBtn.innerHTML = audioEnabled
+              ? "Mute Audio"
+              : "Unmute Audio";
+            updateStatus(audioEnabled ? "Audio on" : "Audio muted", false);
+          }
+        }
+      };
+
+      screenShareBtn.onclick = toggleScreenShare;
+      sendChatBtn.onclick = sendChatMessage;
+      clearHistoryBtn.onclick = clearHistory;
+
+      chatInput.onkeypress = function (e) {
+        if (e.key === "Enter") sendChatMessage();
+      };
+
+      // Load history on startup
+      loadHistory();
+
+      window.onbeforeunload = function () {
+        if (currentCall) currentCall.close();
+        if (dataConnection) dataConnection.close();
+        if (peer) peer.destroy();
+        if (localStream)
+          localStream.getTracks().forEach(function (t) {
+            t.stop();
+          });
+        if (screenStream)
+          screenStream.getTracks().forEach(function (t) {
+            t.stop();
+          });
+        if (callTimerInterval) clearInterval(callTimerInterval);
+      };
+    </script>
+  </body>
+</html>
