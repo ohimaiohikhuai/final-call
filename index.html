@@ -1,4 +1,4 @@
-<!-- Chatrix Call - With Call History -->
+<!-- Chatrix Call - Full Version with Connection Fix -->
 <!doctype html>
 <html>
   <head>
@@ -433,7 +433,7 @@
   </head>
   <body>
     <div class="container">
-      <h2>Chatrix Call</h2>
+      <h2>📷 Chatrix Call</h2>
 
       <div class="id-section">
         <p>Your Call ID (share this):</p>
@@ -465,7 +465,7 @@
               class="screen-sharing-badge"
               style="display: none"
             >
-              Sharing Screen
+              📺 Sharing Screen
             </div>
             <div
               id="localPlaceholder"
@@ -488,7 +488,7 @@
               class="screen-sharing-badge"
               style="display: none"
             >
-              Sharing Screen
+              📺 Sharing Screen
             </div>
             <div
               id="remotePlaceholder"
@@ -507,7 +507,7 @@
 
         <!-- Chat Section -->
         <div class="chat-section">
-          <div class="chat-header">Chat</div>
+          <div class="chat-header">💬 Chat</div>
           <div class="chat-messages" id="chatMessages">
             <div style="text-align: center; color: #aaa; padding: 20px">
               Start a call to chat
@@ -527,7 +527,7 @@
         <!-- Call History Section -->
         <div class="history-section">
           <div class="history-header">
-            Call History
+            📞 Call History
             <span id="clearHistoryBtn" class="clear-history">Clear</span>
           </div>
           <div class="history-list" id="historyList">
@@ -537,9 +537,11 @@
       </div>
 
       <div class="controls">
-        <button id="toggleVideoBtn">Mute Video</button>
-        <button id="toggleAudioBtn">Mute Audio</button>
-        <button id="screenShareBtn" class="screen-share">Share Screen</button>
+        <button id="toggleVideoBtn">🎥 Mute Video</button>
+        <button id="toggleAudioBtn">🎤 Mute Audio</button>
+        <button id="screenShareBtn" class="screen-share">
+          🖥️ Share Screen
+        </button>
       </div>
 
       <div class="status" id="status">
@@ -618,14 +620,13 @@
           friendName: friend,
           duration: duration,
           durationSec: duration,
-          type: type, // 'incoming' or 'outgoing'
-          status: status, // 'completed', 'missed', 'ended'
+          type: type,
+          status: status,
           time: timeStr,
           date: dateStr,
           timestamp: now.getTime(),
         });
 
-        // Keep only last 50 calls
         if (callHistory.length > 50) {
           callHistory = callHistory.slice(0, 50);
         }
@@ -634,7 +635,6 @@
         renderHistory();
       }
 
-      // Format duration
       function formatDuration(seconds) {
         if (!seconds || seconds === 0) return "0:00";
         var mins = Math.floor(seconds / 60);
@@ -642,7 +642,6 @@
         return mins + ":" + (secs < 10 ? "0" + secs : secs);
       }
 
-      // Render history list
       function renderHistory() {
         var historyList = document.getElementById("historyList");
         if (!historyList) return;
@@ -655,16 +654,7 @@
         var html = "";
         for (var i = 0; i < callHistory.length; i++) {
           var call = callHistory[i];
-          var typeIcon = "";
-          var typeClass = "";
-
-          if (call.type === "outgoing") {
-            typeIcon = "📞 ";
-            typeClass = "history-outgoing";
-          } else {
-            typeIcon = "📞 ";
-            typeClass = "history-incoming";
-          }
+          var typeIcon = call.type === "outgoing" ? "📤 " : "📥 ";
 
           var statusText = "";
           var statusClass = "";
@@ -693,7 +683,6 @@
 
         historyList.innerHTML = html;
 
-        // Add click handlers to call history items
         var items = historyList.querySelectorAll(".history-item");
         for (var j = 0; j < items.length; j++) {
           items[j].onclick = (function (index) {
@@ -701,14 +690,16 @@
               var call = callHistory[index];
               if (call && call.friendName) {
                 document.getElementById("remoteId").value = call.friendName;
-                updateStatus("Past ID filled: " + call.friendName, false);
+                updateStatus(
+                  "Filled ID from history: " + call.friendName,
+                  false,
+                );
               }
             };
           })(j);
         }
       }
 
-      // Clear history
       function clearHistory() {
         if (confirm("Clear all call history?")) {
           callHistory = [];
@@ -794,7 +785,6 @@
         }
       };
 
-      // Timer functions
       function startCallTimer() {
         currentCallStartTime = Date.now();
         callStartTime = Date.now();
@@ -820,7 +810,6 @@
         callTimerDiv.style.display = "none";
         timerDisplay.innerText = "00:00";
 
-        // Calculate duration for history
         if (currentCallStartTime) {
           var duration = Math.floor((Date.now() - currentCallStartTime) / 1000);
           return duration;
@@ -828,7 +817,6 @@
         return 0;
       }
 
-      // Chat functions
       function addChatMessage(sender, message, isMine) {
         if (
           chatMessages.children.length === 1 &&
@@ -917,7 +905,6 @@
         }
       }
 
-      // Screen Sharing Functions
       async function startScreenShare() {
         try {
           screenStream = await navigator.mediaDevices.getDisplayMedia({
@@ -943,7 +930,7 @@
 
           localVideo.srcObject = screenStream;
           isScreenSharing = true;
-          screenShareBtn.innerHTML = " Stop Sharing";
+          screenShareBtn.innerHTML = "🖥️ Stop Sharing";
           screenShareBtn.classList.add("active");
           localScreenBadge.style.display = "block";
           localPlaceholder.style.display = "none";
@@ -984,7 +971,7 @@
         }
 
         isScreenSharing = false;
-        screenShareBtn.innerHTML = " Share Screen";
+        screenShareBtn.innerHTML = "🖥️ Share Screen";
         screenShareBtn.classList.remove("active");
         localScreenBadge.style.display = "none";
         updateLocalPlaceholder();
@@ -1015,8 +1002,8 @@
             localVideo.srcObject = stream;
             videoEnabled = true;
             audioEnabled = true;
-            toggleVideoBtn.innerHTML = "Mute Video";
-            toggleAudioBtn.innerHTML = "Mute Audio";
+            toggleVideoBtn.innerHTML = "🎥 Mute Video";
+            toggleAudioBtn.innerHTML = "🎤 Mute Audio";
             updateLocalPlaceholder();
             updateStatus("Camera ready - Your ID: " + customId, false);
 
@@ -1125,11 +1112,32 @@
         });
       }
 
+      // ============================================
+      // FIXED PEER CONNECTION WITH TURN SERVERS
+      // This helps calls work across different networks
+      // ============================================
       function initPeer() {
-        peer = new Peer(customId);
+        peer = new Peer(customId, {
+          config: {
+            iceServers: [
+              { urls: "stun:stun.l.google.com:19302" },
+              { urls: "stun:stun1.l.google.com:19302" },
+              {
+                urls: "turn:openrelay.metered.ca:80",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
+              {
+                urls: "turn:openrelay.metered.ca:443",
+                username: "openrelayproject",
+                credential: "openrelayproject",
+              },
+            ],
+          },
+        });
 
         peer.on("open", function (id) {
-          myIdSpan.innerText = id;
+          myIdSpan.innerText = customId;
         });
 
         peer.on("connection", function (conn) {
@@ -1143,7 +1151,7 @@
             return;
           }
 
-          updateStatus("Incoming call from " + call.peer, false);
+          updateStatus("Incoming call...", false);
 
           if (localStream) {
             call.answer(localStream);
@@ -1224,8 +1232,8 @@
             videoEnabled = !videoEnabled;
             videoTrack.enabled = videoEnabled;
             toggleVideoBtn.innerHTML = videoEnabled
-              ? "Mute Video"
-              : "Unmute Video";
+              ? "🎥 Mute Video"
+              : "🎥 Unmute Video";
             updateLocalPlaceholder();
             updateStatus(videoEnabled ? "Video on" : "Video off", false);
 
@@ -1249,8 +1257,8 @@
             audioEnabled = !audioEnabled;
             audioTrack.enabled = audioEnabled;
             toggleAudioBtn.innerHTML = audioEnabled
-              ? "Mute Audio"
-              : "Unmute Audio";
+              ? "🎤 Mute Audio"
+              : "🎤 Unmute Audio";
             updateStatus(audioEnabled ? "Audio on" : "Audio muted", false);
           }
         }
@@ -1264,7 +1272,6 @@
         if (e.key === "Enter") sendChatMessage();
       };
 
-      // Load history on startup
       loadHistory();
 
       window.onbeforeunload = function () {
