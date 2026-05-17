@@ -3,51 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Video Calls (Works on Same Device)</title>
+    <title>Chatrix · Video Calls</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0a; font-family: system-ui, sans-serif; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
+        
         .auth-card { background: #121212; border-radius: 40px; padding: 32px; text-align: center; border: 1px solid #262626; }
         .auth-card h2 { color: #00d4ff; margin-bottom: 20px; }
-        .auth-card input { width: 100%; padding: 14px; background: #1f1f1f; border: none; border-radius: 60px; color: white; margin-bottom: 12px; }
-        .auth-card button { width: 100%; background: #00d4ff; border: none; padding: 14px; border-radius: 60px; font-weight: bold; cursor: pointer; }
+        .auth-card input { width: 100%; padding: 14px; background: #1f1f1f; border: none; border-radius: 60px; color: white; margin-bottom: 12px; font-size: 16px; }
+        .auth-card button { width: 100%; background: #00d4ff; border: none; padding: 14px; border-radius: 60px; font-weight: bold; font-size: 16px; cursor: pointer; }
         .error-msg { color: #ff8080; font-size: 13px; margin-top: 12px; }
         
-        .friend-item { background: #121212; border-radius: 24px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .call-btn { background: #00d4ff; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
+        .friend-item { background: #121212; border-radius: 24px; padding: 14px 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px; border: 1px solid #242424; }
+        .avatar { width: 50px; height: 50px; background: #1e2a2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; position: relative; }
+        .online-dot { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; background: #22c55e; border-radius: 50%; border: 2px solid #121212; }
+        .offline-dot { background: #5f6c6f; }
+        .friend-info { flex: 1; }
+        .friend-name { color: white; font-weight: 600; font-size: 17px; }
+        .status-text { color: #888; font-size: 12px; margin-top: 4px; }
+        .call-btn { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 8px 14px; border-radius: 40px; font-size: 14px; cursor: pointer; margin-left: 8px; }
         .call-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         
         .call-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; flex-direction: column; }
-        .call-header { background: #1a1a1a; padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .call-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .call-header { background: #1a1a1a; padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .call-controls { display: flex; gap: 8px; flex-wrap: wrap; }
         .call-controls button { background: #2c2c2e; border: none; color: white; padding: 8px 12px; border-radius: 25px; cursor: pointer; font-size: 12px; }
         .call-controls button.end-call { background: #ff3b30; }
-        .video-row { flex: 1; display: flex; gap: 10px; padding: 20px; }
+        .video-container { flex: 1; display: flex; gap: 10px; padding: 20px; }
         .video-box { flex: 1; background: #1a1a1a; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .chat-panel { width: 260px; background: #121212; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 12px; }
-        .chat-messages { flex: 1; overflow-y: auto; font-size: 12px; color: #ccc; }
-        .chat-input { display: flex; gap: 8px; margin-top: 10px; }
-        .chat-input input { flex: 1; padding: 8px; background: #2c2c2e; border: none; border-radius: 20px; color: white; }
-        .chat-input button { background: #00d4ff; border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; }
+        .chat-sidebar { width: 280px; background: #121212; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 12px; }
+        .chat-messages { flex: 1; overflow-y: auto; font-size: 13px; color: #ccc; margin-bottom: 12px; max-height: 400px; }
+        .chat-messages div { padding: 5px 0; border-bottom: 0.5px solid #2a2a2a; }
+        .chat-input-area { display: flex; gap: 8px; margin-top: 10px; }
+        .chat-input-area input { flex: 1; padding: 10px; background: #2c2c2e; border: none; border-radius: 25px; color: white; }
+        .chat-input-area button { background: #00d4ff; border: none; padding: 10px 15px; border-radius: 25px; cursor: pointer; }
         
-        .incoming-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #121212; border-radius: 40px; padding: 32px; text-align: center; z-index: 2000; border: 2px solid #00d4ff; min-width: 260px; animation: pulse 1s infinite; }
+        .incoming-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #121212; border-radius: 40px; padding: 32px; text-align: center; z-index: 2000; border: 2px solid #00d4ff; min-width: 280px; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
-        .incoming-modal button { padding: 10px 20px; border-radius: 30px; font-weight: bold; margin: 0 10px; cursor: pointer; }
+        .incoming-modal button { padding: 10px 20px; border-radius: 40px; font-weight: bold; margin: 0 10px; cursor: pointer; }
         .accept { background: #22c55e; border: none; color: white; }
         .decline { background: #ff3b30; border: none; color: white; }
         
         .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
         .logout-btn { background: #2c2c2e; border: none; color: #aaa; padding: 8px 16px; border-radius: 40px; cursor: pointer; }
-        .add-section { display: flex; gap: 10px; margin-bottom: 16px; }
-        .add-section input { flex: 1; padding: 12px; background: #1f1f1f; border: none; border-radius: 60px; color: white; }
-        .add-section button { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 0 20px; border-radius: 60px; cursor: pointer; }
-        .hidden { display: none; }
-        .toast { position: fixed; bottom: 100px; left: 20px; right: 20px; background: #1e2a2e; border-left: 4px solid #00d4ff; padding: 12px; border-radius: 16px; z-index: 2000; animation: slideUp 0.3s; text-align: center; }
+        .add-friend { display: flex; gap: 10px; margin-bottom: 16px; }
+        .add-friend input { flex: 1; padding: 12px; background: #1f1f1f; border: none; border-radius: 60px; color: white; }
+        .add-friend button { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 0 20px; border-radius: 60px; cursor: pointer; }
+        
+        .toast { position: fixed; bottom: 100px; left: 20px; right: 20px; background: #1e2a2e; border-left: 4px solid #00d4ff; padding: 14px; border-radius: 16px; z-index: 2000; animation: slideUp 0.3s ease; text-align: center; }
         @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .online { color: #22c55e; }
-        .offline { color: #666; }
+        .hidden { display: none; }
     </style>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -55,51 +62,51 @@
 </head>
 <body>
 <div class="container">
-    <div id="authDiv" class="auth-card">
+    <div id="authScreen" class="auth-card">
         <h2>📞 Chatrix</h2>
-        <input type="text" id="loginName" placeholder="Username">
-        <input type="password" id="loginPass" placeholder="Password (min 4 chars)">
+        <input type="text" id="username" placeholder="Username">
+        <input type="password" id="password" placeholder="Password (min 4 chars)">
         <button id="loginBtn">Login / Sign Up</button>
         <div id="authError" class="error-msg"></div>
     </div>
 
-    <div id="appDiv" class="hidden">
+    <div id="appScreen" class="hidden">
         <div class="header">
             <h2>Friends</h2>
             <button id="logoutBtn" class="logout-btn">Logout</button>
         </div>
-        <div class="add-section">
-            <input type="text" id="friendName" placeholder="Add friend username">
+        <div class="add-friend">
+            <input type="text" id="friendUsername" placeholder="Add friend by username">
             <button id="addFriendBtn">Add</button>
         </div>
         <div id="friendsList"></div>
-        <div class="add-section" style="margin-top: 16px;">
-            <input type="text" id="groupRoomName" placeholder="Group room name">
+        <div class="add-friend" style="margin-top: 16px;">
+            <input type="text" id="groupRoom" placeholder="Group room name">
             <button id="joinGroupBtn">Join Group</button>
         </div>
         <button id="createGroupBtn" class="call-btn" style="width:100%; margin-top:10px;">+ Create Group Room</button>
     </div>
 </div>
 
-<div id="callDiv" class="call-overlay hidden">
+<div id="callScreen" class="call-overlay hidden">
     <div class="call-header">
         <div class="call-controls">
-            <button id="muteMicBtn"><i class="fas fa-microphone"></i> Mute</button>
-            <button id="muteVideoBtn"><i class="fas fa-video"></i> Video Off</button>
-            <button id="shareScreenBtn"><i class="fas fa-desktop"></i> Screen</button>
-            <button id="chatToggleBtn"><i class="fas fa-comment"></i> Chat</button>
-            <button id="hangupBtn" class="end-call"><i class="fas fa-phone-slash"></i> End</button>
+            <button id="muteMic"><i class="fas fa-microphone"></i> Mute</button>
+            <button id="muteVideo"><i class="fas fa-video"></i> Video Off</button>
+            <button id="shareScreen"><i class="fas fa-desktop"></i> Screen</button>
+            <button id="showChat"><i class="fas fa-comment"></i> Chat</button>
+            <button id="endCall" class="end-call"><i class="fas fa-phone-slash"></i> End</button>
         </div>
     </div>
     <div style="display: flex; flex: 1;">
-        <div class="video-row">
+        <div class="video-container">
             <div class="video-box"><video id="localVideo" autoplay muted playsinline></video></div>
             <div class="video-box"><video id="remoteVideo" autoplay playsinline></video></div>
         </div>
-        <div id="chatPanel" class="chat-panel hidden">
-            <div id="chatMsgs" class="chat-messages"></div>
-            <div class="chat-input">
-                <input type="text" id="chatInput" placeholder="Message...">
+        <div id="chatSidebar" class="chat-sidebar hidden">
+            <div id="chatMessages" class="chat-messages"></div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Type a message...">
                 <button id="sendChat"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
@@ -107,6 +114,7 @@
 </div>
 
 <script>
+    // Firebase
     const firebaseConfig = {
         apiKey: "AIzaSyAW4j8PG_rzXIe8Lj8lLMnSSjZSUnLkhTk",
         authDomain: "tiktok-211df.firebaseapp.com",
@@ -118,29 +126,30 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const TURN_CONFIG = {
-        iceServers: [
-            { urls: "stun:stun.relay.metered.ca:80" },
-            { urls: "turn:global.relay.metered.ca:80", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
-            { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
-            { urls: "turn:global.relay.metered.ca:443", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
-            { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" }
-        ]
+    // TURN Servers from Metered
+    const peerConfig = {
+        config: {
+            iceServers: [
+                { urls: "stun:stun.relay.metered.ca:80" },
+                { urls: "turn:global.relay.metered.ca:80", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
+                { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
+                { urls: "turn:global.relay.metered.ca:443", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" }
+            ]
+        }
     };
 
     let currentUser = null;
     let localStream = null;
     let peer = null;
     let activeCall = null;
-    let currentRoomId = null;
+    let currentRoom = null;
     let chatUnsub = null;
-    let heartbeat = null;
+    let heartbeatInterval = null;
     let isScreenSharing = false;
-    let originalVideoTrack = null;
 
     function showToast(msg) {
-        const t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
-        document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+        const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+        document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
     }
 
     async function getLocalStream() {
@@ -149,7 +158,38 @@
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById('localVideo').srcObject = localStream;
             return true;
-        } catch(e) { showToast("Camera/mic needed"); return false; }
+        } catch(e) { showToast("Camera/microphone access needed"); return false; }
+    }
+
+    function setupChatListener(roomId) {
+        if (chatUnsub) chatUnsub();
+        const container = document.getElementById('chatMessages');
+        container.innerHTML = '';
+        chatUnsub = db.collection('chats').doc(roomId).collection('messages')
+            .orderBy('timestamp')
+            .onSnapshot(snap => {
+                snap.docChanges().forEach(change => {
+                    if (change.type === 'added') {
+                        const msg = change.doc.data();
+                        const div = document.createElement('div');
+                        div.innerHTML = `<strong>${escapeHtml(msg.from)}:</strong> ${escapeHtml(msg.text)}`;
+                        container.appendChild(div);
+                        container.scrollTop = container.scrollHeight;
+                    }
+                });
+            });
+    }
+
+    async function sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text || !currentRoom) return;
+        await db.collection('chats').doc(currentRoom).collection('messages').add({
+            from: currentUser,
+            text: text,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        input.value = '';
     }
 
     async function startCall(friendId) {
@@ -157,40 +197,40 @@
         if (!online) { showToast(`${friendId} is offline`); return; }
         if (!await getLocalStream()) return;
         
-        currentRoomId = `call_${currentUser}_${friendId}_${Date.now()}`;
+        currentRoom = `call_${currentUser}_${friendId}_${Date.now()}`;
         await db.collection('calls').add({
-            from: currentUser, to: friendId, roomId: currentRoomId, status: 'ringing', timestamp: new Date()
+            from: currentUser, to: friendId, room: currentRoom, status: 'ringing', timestamp: new Date()
         });
         
-        document.getElementById('callDiv').classList.remove('hidden');
-        document.getElementById('appDiv').classList.add('hidden');
+        document.getElementById('callScreen').classList.remove('hidden');
+        document.getElementById('appScreen').classList.add('hidden');
         
         const friendPeer = await db.collection('peers').doc(friendId).get();
         if (!friendPeer.exists) { showToast("Friend offline"); endCall(); return; }
         
         activeCall = peer.call(friendPeer.data().peerId, localStream);
-        activeCall.on('stream', (s) => { document.getElementById('remoteVideo').srcObject = s; });
+        activeCall.on('stream', (stream) => { document.getElementById('remoteVideo').srcObject = stream; });
         activeCall.on('close', () => endCall());
         activeCall.on('error', () => { showToast("Call failed"); endCall(); });
         
-        setupChat(currentRoomId);
+        setupChatListener(currentRoom);
     }
 
     async function acceptCall(callId, fromId, roomId) {
         document.getElementById('incomingModal')?.remove();
         if (!await getLocalStream()) return;
-        currentRoomId = roomId;
-        document.getElementById('callDiv').classList.remove('hidden');
-        document.getElementById('appDiv').classList.add('hidden');
+        currentRoom = roomId;
+        document.getElementById('callScreen').classList.remove('hidden');
+        document.getElementById('appScreen').classList.add('hidden');
         
         const fromPeer = await db.collection('peers').doc(fromId).get();
         if (fromPeer.exists) {
             activeCall = peer.call(fromPeer.data().peerId, localStream);
-            activeCall.on('stream', (s) => { document.getElementById('remoteVideo').srcObject = s; });
+            activeCall.on('stream', (stream) => { document.getElementById('remoteVideo').srcObject = stream; });
             activeCall.on('close', () => endCall());
         }
         await db.collection('calls').doc(callId).delete();
-        setupChat(roomId);
+        setupChatListener(roomId);
     }
 
     async function declineCall(callId) {
@@ -204,9 +244,9 @@
         if (chatUnsub) chatUnsub();
         localStream = null;
         activeCall = null;
-        currentRoomId = null;
-        document.getElementById('callDiv').classList.add('hidden');
-        document.getElementById('appDiv').classList.remove('hidden');
+        currentRoom = null;
+        document.getElementById('callScreen').classList.add('hidden');
+        document.getElementById('appScreen').classList.remove('hidden');
         document.getElementById('remoteVideo').srcObject = null;
         document.getElementById('localVideo').srcObject = null;
         showToast("Call ended");
@@ -214,9 +254,9 @@
 
     async function joinGroupCall(roomName) {
         if (!await getLocalStream()) return;
-        currentRoomId = roomName;
-        document.getElementById('callDiv').classList.remove('hidden');
-        document.getElementById('appDiv').classList.add('hidden');
+        currentRoom = roomName;
+        document.getElementById('callScreen').classList.remove('hidden');
+        document.getElementById('appScreen').classList.add('hidden');
         
         const roomRef = db.collection('groupRooms').doc(roomName);
         const roomDoc = await roomRef.get();
@@ -247,34 +287,12 @@
                 activeCall.on('close', () => endCall());
             }
         }
-        setupChat(roomName);
+        setupChatListener(roomName);
     }
 
-    function setupChat(roomId) {
-        if (chatUnsub) chatUnsub();
-        const container = document.getElementById('chatMsgs');
-        container.innerHTML = '';
-        chatUnsub = db.collection('groupChats').doc(roomId).collection('msgs').orderBy('time').onSnapshot(snap => {
-            snap.docChanges().forEach(ch => {
-                if (ch.type === 'added') {
-                    const m = ch.doc.data();
-                    const d = document.createElement('div');
-                    d.innerHTML = `<b>${escapeHtml(m.from)}:</b> ${escapeHtml(m.text)}`;
-                    container.appendChild(d);
-                    container.scrollTop = container.scrollHeight;
-                }
-            });
-        });
-    }
-
-    async function sendChat() {
-        const inp = document.getElementById('chatInput');
-        const txt = inp.value.trim();
-        if (!txt || !currentRoomId) return;
-        await db.collection('groupChats').doc(currentRoomId).collection('msgs').add({
-            from: currentUser, text: txt, time: new Date()
-        });
-        inp.value = '';
+    async function createGroupRoom() {
+        const name = prompt("Enter room name:", "room_" + Date.now());
+        if (name) await joinGroupCall(name);
     }
 
     async function toggleScreenShare() {
@@ -288,7 +306,7 @@
             localStream.addTrack(newTrack);
             document.getElementById('localVideo').srcObject = localStream;
             isScreenSharing = false;
-            document.getElementById('shareScreenBtn').style.background = '#2c2c2e';
+            document.getElementById('shareScreen').style.background = '#2c2c2e';
         } else {
             try {
                 const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
@@ -299,81 +317,97 @@
                 localStream.addTrack(screenTrack);
                 document.getElementById('localVideo').srcObject = localStream;
                 isScreenSharing = true;
-                document.getElementById('shareScreenBtn').style.background = '#00d4ff';
+                document.getElementById('shareScreen').style.background = '#00d4ff';
                 screenTrack.onended = () => toggleScreenShare();
             } catch(e) { showToast("Screen share cancelled"); }
         }
     }
 
-    function toggleMic() {
+    function toggleMute() {
         if (localStream) {
-            const a = localStream.getAudioTracks()[0];
-            if (a) a.enabled = !a.enabled;
-            document.getElementById('muteMicBtn').innerHTML = a?.enabled ? '<i class="fas fa-microphone"></i> Mute' : '<i class="fas fa-microphone-slash"></i> Unmute';
+            const audio = localStream.getAudioTracks()[0];
+            if (audio) audio.enabled = !audio.enabled;
+            document.getElementById('muteMic').innerHTML = audio?.enabled ? '<i class="fas fa-microphone"></i> Mute' : '<i class="fas fa-microphone-slash"></i> Unmute';
         }
     }
+
     function toggleVideo() {
         if (localStream) {
-            const v = localStream.getVideoTracks()[0];
-            if (v) v.enabled = !v.enabled;
-            document.getElementById('muteVideoBtn').innerHTML = v?.enabled ? '<i class="fas fa-video"></i> Video Off' : '<i class="fas fa-video-slash"></i> Video On';
+            const video = localStream.getVideoTracks()[0];
+            if (video) video.enabled = !video.enabled;
+            document.getElementById('muteVideo').innerHTML = video?.enabled ? '<i class="fas fa-video"></i> Video Off' : '<i class="fas fa-video-slash"></i> Video On';
         }
     }
-    function toggleChat() { document.getElementById('chatPanel').classList.toggle('hidden'); }
+
+    function toggleChat() {
+        document.getElementById('chatSidebar').classList.toggle('hidden');
+    }
 
     async function initPeer() {
-        return new Promise((res) => {
-            const p = new Peer(null, { config: TURN_CONFIG });
-            p.on('open', (id) => { peer = p; res(id); });
-            p.on('error', (e) => console.log(e));
+        return new Promise((resolve) => {
+            const p = new Peer(null, peerConfig);
+            p.on('open', (id) => { peer = p; resolve(id); });
+            p.on('error', (e) => console.log("Peer error:", e));
         });
     }
 
-    async function getOnlineStatus(u) {
-        const s = await db.collection('presence').doc(u).get();
+    async function getOnlineStatus(user) {
+        const s = await db.collection('presence').doc(user).get();
         return s.exists ? s.data().online : false;
     }
-    async function setOnline(u, online) {
-        await db.collection('presence').doc(u).set({ online, lastSeen: new Date() }, { merge: true });
-    }
-    async function startHeartbeat() {
-        if (heartbeat) clearInterval(heartbeat);
-        await setOnline(currentUser, true);
-        heartbeat = setInterval(() => setOnline(currentUser, true), 15000);
-        window.addEventListener('beforeunload', () => setOnline(currentUser, false));
+
+    async function setOnlineStatus(user, online) {
+        await db.collection('presence').doc(user).set({ online, lastSeen: new Date() }, { merge: true });
     }
 
-    async function addFriend(name) {
-        if (name === currentUser) return;
-        const u = await db.collection('users').doc(currentUser).get();
-        const f = u.exists ? u.data().friends || [] : [];
-        if (f.includes(name)) return;
-        await db.collection('users').doc(currentUser).update({ friends: firebase.firestore.FieldValue.arrayUnion(name) });
-        await db.collection('users').doc(name).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser) });
-        loadFriends();
-        showToast(`Added ${name}`);
+    async function startHeartbeat() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        await setOnlineStatus(currentUser, true);
+        heartbeatInterval = setInterval(() => setOnlineStatus(currentUser, true), 15000);
+        window.addEventListener('beforeunload', () => setOnlineStatus(currentUser, false));
+    }
+
+    async function addFriend(username) {
+        if (username === currentUser) { showToast("Can't add yourself"); return; }
+        const userRef = db.collection('users').doc(currentUser);
+        const doc = await userRef.get();
+        const friends = doc.exists ? doc.data().friends || [] : [];
+        if (friends.includes(username)) { showToast("Already friends"); return; }
+        await userRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(username) });
+        await db.collection('users').doc(username).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser) });
+        await loadFriends();
+        showToast(`Added ${username}`);
     }
 
     async function loadFriends() {
-        const u = await db.collection('users').doc(currentUser).get();
-        const friends = u.exists ? u.data().friends || [] : [];
-        const cont = document.getElementById('friendsList');
-        if (!cont) return;
-        if (friends.length === 0) { cont.innerHTML = '<div style="text-align:center;padding:30px;color:#666;">No friends yet</div>'; return; }
+        const doc = await db.collection('users').doc(currentUser).get();
+        const friends = doc.exists ? doc.data().friends || [] : [];
+        const container = document.getElementById('friendsList');
+        if (!container) return;
+        if (friends.length === 0) {
+            container.innerHTML = '<div style="text-align:center; color:#666; padding:30px;">No friends yet. Add someone!</div>';
+            return;
+        }
         let html = '';
-        for (let f of friends) {
+        for (const f of friends) {
             const online = await getOnlineStatus(f);
             html += `<div class="friend-item">
-                <span><strong>${escapeHtml(f)}</strong> <span class="${online ? 'online' : 'offline'}">${online ? '● Online' : '○ Offline'}</span></span>
-                <button class="call-btn" onclick="startCall('${f}')" ${!online ? 'disabled' : ''}>📞 Call</button>
+                <div class="avatar"><i class="fas fa-user-circle"></i><span class="${online ? 'online-dot' : 'offline-dot'}"></span></div>
+                <div class="friend-info">
+                    <div class="friend-name">${escapeHtml(f)}</div>
+                    <div class="status-text">${online ? '🟢 Online' : '⚫ Offline'}</div>
+                </div>
+                <button class="call-btn" onclick="startCall('${f}')" ${!online ? 'disabled' : ''}><i class="fas fa-video"></i> Call</button>
             </div>`;
         }
-        cont.innerHTML = html;
+        container.innerHTML = html;
     }
 
     async function initUser() {
-        const r = await db.collection('users').doc(currentUser).get();
-        if (!r.exists) await db.collection('users').doc(currentUser).set({ username: currentUser, friends: [], createdAt: new Date() });
+        const ref = db.collection('users').doc(currentUser);
+        if (!(await ref.get()).exists) {
+            await ref.set({ username: currentUser, friends: [], createdAt: new Date() });
+        }
         await loadFriends();
         setInterval(() => loadFriends(), 5000);
     }
@@ -381,72 +415,90 @@
     function listenForCalls() {
         db.collection('calls').where('to', '==', currentUser).where('status', '==', 'ringing').onSnapshot(snap => {
             snap.forEach(doc => {
-                const c = doc.data();
-                if (c && c.from !== currentUser && !document.getElementById('incomingModal')) {
-                    const m = document.createElement('div'); m.id = 'incomingModal'; m.className = 'incoming-modal';
-                    m.innerHTML = `<div style="width:60px;height:60px;background:#00d4ff20;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-phone" style="font-size:28px;color:#00d4ff;"></i></div>
-                        <h3>Incoming Call</h3><p>from <strong>${escapeHtml(c.from)}</strong></p>
-                        <div><button class="accept" onclick="acceptCall('${doc.id}', '${c.from}', '${c.roomId}')">Accept</button>
-                        <button class="decline" onclick="declineCall('${doc.id}')">Decline</button></div>`;
-                    document.body.appendChild(m);
+                const call = doc.data();
+                if (call && call.from !== currentUser && !document.getElementById('incomingModal')) {
+                    const modal = document.createElement('div');
+                    modal.id = 'incomingModal';
+                    modal.className = 'incoming-modal';
+                    modal.innerHTML = `
+                        <div style="width:70px;height:70px;background:#00d4ff20;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-phone" style="font-size:30px;color:#00d4ff;"></i></div>
+                        <h3>Incoming Call</h3>
+                        <p>from <strong>${escapeHtml(call.from)}</strong></p>
+                        <div><button class="accept" onclick="acceptCall('${doc.id}', '${call.from}', '${call.room}')">Accept</button>
+                        <button class="decline" onclick="declineCall('${doc.id}')">Decline</button></div>
+                    `;
+                    document.body.appendChild(modal);
                 }
             });
         });
     }
 
     async function handleAuth() {
-        const name = document.getElementById('loginName').value.trim().toLowerCase();
-        const pass = document.getElementById('loginPass').value;
-        if (!name || pass.length < 4) { document.getElementById('authError').innerText = 'Username & password min 4 chars'; return; }
-        const ref = db.collection('users').doc(name);
-        const doc = await ref.get();
+        const username = document.getElementById('username').value.trim().toLowerCase();
+        const password = document.getElementById('password').value;
+        if (!username || password.length < 4) {
+            document.getElementById('authError').innerText = 'Username and password (min 4 chars)';
+            return;
+        }
+        const userRef = db.collection('users').doc(username);
+        const doc = await userRef.get();
         if (!doc.exists) {
-            await ref.set({ username: name, friends: [], passwordHash: btoa(pass), createdAt: new Date() });
-        } else if (doc.data().passwordHash !== btoa(pass)) {
+            await userRef.set({ username, friends: [], passwordHash: btoa(password), createdAt: new Date() });
+        } else if (doc.data().passwordHash !== btoa(password)) {
             document.getElementById('authError').innerText = 'Wrong password';
             return;
         }
-        currentUser = name;
-        const pid = await initPeer();
-        await db.collection('peers').doc(name).set({ peerId: pid });
+        currentUser = username;
+        const peerId = await initPeer();
+        await db.collection('peers').doc(username).set({ peerId });
         await startHeartbeat();
         await initUser();
         listenForCalls();
-        for (let u of ['Alice', 'Bob', 'Charlie']) if (u !== name) await setOnline(u, true);
-        document.getElementById('authDiv').style.display = 'none';
-        document.getElementById('appDiv').classList.remove('hidden');
-        showToast(`Welcome ${name}`);
+        for (let u of ['Alice', 'Bob', 'Charlie']) if (u !== username) await setOnlineStatus(u, true);
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('appScreen').classList.remove('hidden');
+        showToast(`Welcome ${username}`);
     }
 
     function logout() {
-        if (heartbeat) clearInterval(heartbeat);
-        if (currentUser) setOnline(currentUser, false);
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (currentUser) setOnlineStatus(currentUser, false);
         if (activeCall) endCall();
         if (peer) peer.destroy();
         currentUser = null;
-        document.getElementById('authDiv').style.display = 'block';
-        document.getElementById('appDiv').classList.add('hidden');
+        document.getElementById('authScreen').style.display = 'block';
+        document.getElementById('appScreen').classList.add('hidden');
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
     }
 
-    function escapeHtml(s) { return String(s).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
 
+    // Make functions global for onclick
     window.startCall = startCall;
     window.acceptCall = acceptCall;
     window.declineCall = declineCall;
-    window.addFriend = addFriend;
 
+    // Event listeners
     document.getElementById('loginBtn').onclick = handleAuth;
     document.getElementById('logoutBtn').onclick = logout;
-    document.getElementById('addFriendBtn').onclick = () => { const n = document.getElementById('friendName').value.trim().toLowerCase(); if (n) addFriend(n); };
-    document.getElementById('joinGroupBtn').onclick = () => { const r = document.getElementById('groupRoomName').value.trim(); if (r) joinGroupCall(r); else showToast("Enter room name"); };
-    document.getElementById('createGroupBtn').onclick = () => { const r = prompt("Room name:", "group_" + Date.now()); if (r) joinGroupCall(r); };
-    document.getElementById('hangupBtn').onclick = endCall;
-    document.getElementById('muteMicBtn').onclick = toggleMic;
-    document.getElementById('muteVideoBtn').onclick = toggleVideo;
-    document.getElementById('shareScreenBtn').onclick = toggleScreenShare;
-    document.getElementById('chatToggleBtn').onclick = toggleChat;
-    document.getElementById('sendChat').onclick = sendChat;
-    document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendChat(); });
+    document.getElementById('addFriendBtn').onclick = () => {
+        const name = document.getElementById('friendUsername').value.trim().toLowerCase();
+        if (name) addFriend(name);
+    };
+    document.getElementById('joinGroupBtn').onclick = () => {
+        const room = document.getElementById('groupRoom').value.trim();
+        if (room) joinGroupCall(room);
+        else showToast("Enter room name");
+    };
+    document.getElementById('createGroupBtn').onclick = createGroupRoom;
+    document.getElementById('endCall').onclick = endCall;
+    document.getElementById('muteMic').onclick = toggleMute;
+    document.getElementById('muteVideo').onclick = toggleVideo;
+    document.getElementById('shareScreen').onclick = toggleScreenShare;
+    document.getElementById('showChat').onclick = toggleChat;
+    document.getElementById('sendChat').onclick = sendChatMessage;
+    document.getElementById('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendChatMessage(); });
 </script>
 </body>
 </html>
