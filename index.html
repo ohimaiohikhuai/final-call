@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Pro Video Calls</title>
+    <title>Chatrix · Smart Video Calls</title>
     <style>
         * {
             margin: 0;
@@ -43,7 +43,7 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            min-height: 0; /* flex limitation fix */
+            min-height: 0;
         }
 
         .video-wrapper {
@@ -65,7 +65,6 @@
             display: block;
         }
 
-        /* local video mirror effect */
         #localVideo {
             transform: scaleX(-1);
         }
@@ -131,7 +130,6 @@
             transform: scale(0.94);
         }
 
-        /* auth card & friend list */
         .auth-card {
             background: #121212;
             border-radius: 40px;
@@ -205,6 +203,30 @@
             margin-top: 5px;
         }
 
+        .toast-notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ff3b30;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 60px;
+            font-weight: bold;
+            z-index: 2000;
+            animation: fadeInOut 2.5s ease forwards;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            15% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(20px); visibility: hidden; }
+        }
+
         input, button {
             font-family: inherit;
         }
@@ -230,7 +252,7 @@
             <button id="addFriendBtn" style="background:#00d4ff20; border:1px solid #00d4ff; color:#00d4ff; font-weight:bold;">+ Add</button>
         </div>
         <div id="friendsList"></div>
-        <p style="color:#666; font-size:11px; text-align:center; margin-top:20px;">🔐 Secure WebRTC · TURN enabled · Screen share + mute controls</p>
+        <p style="color:#666; font-size:11px; text-align:center; margin-top:20px;">🔐 Secure WebRTC · TURN enabled · Screen share + mute</p>
     </div>
 </div>
 
@@ -298,14 +320,16 @@
 
     // ---------- GLOBAL STATE ----------
     let currentUser = null;
-    let localStream = null;          // main camera/mic stream OR screen share stream
+    let localStream = null;
     let currentPeer = null;
     let currentCall = null;
     let heartbeatInterval = null;
     let isMicMuted = false;
     let isVideoMuted = false;
     let isScreenSharing = false;
-    let originalStream = null;       // store original camera stream when screen sharing
+    let originalStream = null;
+    let activeCallFriendId = null;      // track who we are in call with (for notification)
+    let callEndTimer = null;
 
     // DOM elements
     const loginDiv = document.getElementById('loginDiv');
@@ -319,11 +343,101 @@
     const shareScreenBtn = document.getElementById('shareScreenBtn');
     const hangupBtn = document.getElementById('hangupBtn');
 
-    // ---------- HELPER: get camera/audio stream (default) ----------
+    // Helper: show floating notification
+    function showNotification(message, isError = true) {
+        const existingToast = document.querySelector('.toast-notification');
+        if (existingToast) existingToast.remove();
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => {
+            if (toast && toast.parentNode) toast.remove();
+        }, 2800);
+    }
+
+    // end call completely and notify UI, also propagate to remote via data channel or close event
+    async function terminateCall(byUser = true, reason = "") {
+        if (callEndTimer) clearTimeout(callEndTimer);
+        
+        // If we have active call and we're ending intentionally, send a signal through data channel if available
+        if (currentCall && activeCallFriendId) {
+            // try to notify the remote peer before closing using DataChannel
+            try {
+                if (currentCall.peerConnection) {
+                    // Ensure data channel exists or create one
+                    let dataChannel = currentCall._dataChannel;
+                    if (!dataChannel && currentCall.peerConnection) {
+                        dataChannel = currentCall.peerConnection.createDataChannel("callControl");
+                        dataChannel.onopen = () => {
+                            dataChannel.send(JSON.stringify({ type: "callEnd", from: currentUser }));
+                        };
+                        try { dataChannel.send(JSON.stringify({ type: "callEnd", from: currentUser })); } catch(e) {}
+                    } else if (dataChannel && dataChannel.readyState === "open") {
+                        dataChannel.send(JSON.stringify({ type: "callEnd", from: currentUser }));
+                    }
+                }
+            } catch (e) { console.warn("data channel notify fail", e); }
+            
+            // Also send via firestore realtime for reliability: set a temporary flag
+            if (activeCallFriendId) {
+                const callSignalRef = db.collection('callSignals').doc(`${currentUser}_${activeCallFriendId}`);
+                await callSignalRef.set({
+                    endedBy: currentUser,
+                    timestamp: Date.now(),
+                    active: false
+                }, { merge: true });
+                // auto-delete after 5 seconds
+                setTimeout(() => callSignalRef.delete().catch(()=>{}), 5000);
+            }
+        }
+        
+        // Close call and clean UI
+        if (currentCall) {
+            currentCall.close();
+            currentCall = null;
+        }
+        
+        // Clean remote video
+        if (remoteVideo.srcObject) {
+            const oldStream = remoteVideo.srcObject;
+            if (oldStream && oldStream.getTracks) oldStream.getTracks().forEach(t => t.stop());
+            remoteVideo.srcObject = null;
+        }
+        
+        callOverlay.classList.add('hidden');
+        callStatusSpan.innerText = "";
+        
+        // Show notification to local user only if not caused by remote message handled separately
+        if (byUser && reason === "local") {
+            showNotification("📴 Call ended", false);
+        } else if (!byUser && reason === "remote") {
+            showNotification("🔴 Call ended by the other person", true);
+        } else if (reason === "remote_end") {
+            showNotification("⚠️ The other participant ended the call", true);
+        }
+        
+        activeCallFriendId = null;
+        
+        // Reset screen share button style but don't destroy stream completely
+        if (isScreenSharing) {
+            isScreenSharing = false;
+            shareScreenBtn.style.background = "#2c2c2e";
+            shareScreenBtn.textContent = "🖥️";
+        }
+    }
+    
+    // Clean call if remote ends (called from peer connection close or data channel)
+    function remoteEndCall() {
+        if (!callOverlay.classList.contains('hidden')) {
+            terminateCall(false, "remote_end");
+        }
+    }
+
+    // Get camera/audio stream
     async function getCameraStream() {
         try {
             if (localStream) {
-                // stop all tracks before replacing
                 localStream.getTracks().forEach(track => {
                     if (track.readyState === 'live') track.stop();
                 });
@@ -332,41 +446,30 @@
             return stream;
         } catch (err) {
             console.error("Camera error:", err);
-            alert("Camera/Microphone access required for calls.");
             throw err;
         }
     }
 
-    // apply local stream to video element and update peer connection if call active
     async function replaceLocalStream(newStream) {
         if (localStream) {
-            // stop old tracks to free resources (except if we keep for resume, but safe to stop)
             const oldTracks = localStream.getTracks();
             oldTracks.forEach(t => {
-                if (t.readyState === 'live' && t.kind !== newStream.getTrackByKind(t.kind)) {
-                    t.stop();
-                }
+                if (t.readyState === 'live' && !newStream.getTracks().includes(t)) t.stop();
             });
         }
         localStream = newStream;
         localVideo.srcObject = localStream;
         
-        // if there is an active call, replace the stream being sent
         if (currentCall && currentCall.peerConnection) {
             const senders = currentCall.peerConnection.getSenders();
             const audioTrack = localStream.getAudioTracks()[0];
             const videoTrack = localStream.getVideoTracks()[0];
             senders.forEach(sender => {
-                if (sender.track && sender.track.kind === 'audio' && audioTrack) {
-                    sender.replaceTrack(audioTrack);
-                }
-                if (sender.track && sender.track.kind === 'video' && videoTrack) {
-                    sender.replaceTrack(videoTrack);
-                }
+                if (sender.track && sender.track.kind === 'audio' && audioTrack) sender.replaceTrack(audioTrack);
+                if (sender.track && sender.track.kind === 'video' && videoTrack) sender.replaceTrack(videoTrack);
             });
         }
         
-        // reset mute/video buttons states based on current stream tracks
         const audioTrackExists = localStream.getAudioTracks()[0];
         const videoTrackExists = localStream.getVideoTracks()[0];
         if (audioTrackExists) {
@@ -376,19 +479,6 @@
         if (videoTrackExists) {
             isVideoMuted = !videoTrackExists.enabled;
             updateVideoButtonUI();
-        }
-    }
-
-    // toggle mic
-    async function toggleMic() {
-        if (!localStream) return;
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
-            audioTrack.enabled = !audioTrack.enabled;
-            isMicMuted = !audioTrack.enabled;
-            updateMicButtonUI();
-        } else {
-            alert("No audio track available");
         }
     }
 
@@ -402,15 +492,13 @@
         }
     }
 
-    async function toggleVideo() {
+    async function toggleMic() {
         if (!localStream) return;
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack) {
-            videoTrack.enabled = !videoTrack.enabled;
-            isVideoMuted = !videoTrack.enabled;
-            updateVideoButtonUI();
-        } else {
-            alert("No video track available (maybe screen share?) you can stop screen share to get camera back.");
+        const audioTrack = localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled;
+            isMicMuted = !audioTrack.enabled;
+            updateMicButtonUI();
         }
     }
 
@@ -424,79 +512,49 @@
         }
     }
 
-    // SCREEN SHARE LOGIC: replace video track with screen share, keep audio
-    async function startScreenShare() {
-        if (!localStream) {
-            alert("No stream active");
-            return;
+    async function toggleVideo() {
+        if (!localStream) return;
+        const videoTrack = localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled;
+            isVideoMuted = !videoTrack.enabled;
+            updateVideoButtonUI();
         }
+    }
+
+    async function startScreenShare() {
+        if (!localStream) { alert("No stream active"); return; }
         if (isScreenSharing) {
-            // stop screen share and revert to camera
             await stopScreenShare();
             return;
         }
         try {
-            // get display media (screen share)
             const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
-            // preserve original stream for later (camera + mic)
-            if (!originalStream) {
-                originalStream = await getCameraStream(); // clone original concept
-                // but we need to keep original reference? we'll store tracks separately.
-                // simpler: store current localStream as backup (camera + mic)
-                if (localStream && !isScreenSharing) {
-                    // store backup only once
-                    if (!window._backupStream) {
-                        window._backupStream = await getCameraStream();
-                    }
-                }
+            if (!window._backupStream) {
+                window._backupStream = await getCameraStream();
             }
-            // get current audio tracks (preserve mic)
             const currentAudioTracks = localStream.getAudioTracks();
             const newStream = new MediaStream();
-            // add audio from existing stream (mic) if any
-            currentAudioTracks.forEach(track => {
-                if (track.kind === 'audio') newStream.addTrack(track);
-            });
-            // add screen share video track
+            currentAudioTracks.forEach(track => { if (track.kind === 'audio') newStream.addTrack(track); });
             const screenVideoTrack = screenStream.getVideoTracks()[0];
             newStream.addTrack(screenVideoTrack);
-            
-            // handle when user stops screen share via browser UI
-            screenVideoTrack.onended = () => {
-                if (isScreenSharing) stopScreenShare();
-            };
-            
+            screenVideoTrack.onended = () => { if (isScreenSharing) stopScreenShare(); };
             await replaceLocalStream(newStream);
             isScreenSharing = true;
             shareScreenBtn.style.background = "#00d4ff";
             shareScreenBtn.textContent = "🖥️✓";
-            // video mute flag reset logically: we have video but we can still mute
             isVideoMuted = false;
             updateVideoButtonUI();
         } catch (err) {
-            console.error("Screen share error:", err);
-            alert("Could not start screen share. Permission denied or error.");
+            alert("Screen share failed");
         }
     }
 
     async function stopScreenShare() {
         if (!isScreenSharing) return;
         try {
-            // revert to original camera + mic stream
-            let fallbackStream = null;
-            if (window._backupStream) {
-                fallbackStream = window._backupStream;
-                // ensure tracks are still alive (some may have been stopped)
-                const audioTracks = fallbackStream.getAudioTracks();
-                const videoTracks = fallbackStream.getVideoTracks();
-                if (videoTracks.length === 0 || videoTracks[0].readyState === 'ended') {
-                    fallbackStream = await getCameraStream();
-                } else {
-                    // check if tracks are still enabled
-                    videoTracks.forEach(t => { if(t.readyState === 'ended') t.stop(); });
-                    if (fallbackStream.getVideoTracks().length === 0) fallbackStream = await getCameraStream();
-                }
-            } else {
+            let fallbackStream = window._backupStream ? window._backupStream : await getCameraStream();
+            if (fallbackStream.getVideoTracks().length === 0 || fallbackStream.getVideoTracks()[0].readyState === 'ended') {
                 fallbackStream = await getCameraStream();
             }
             await replaceLocalStream(fallbackStream);
@@ -505,112 +563,146 @@
             shareScreenBtn.textContent = "🖥️";
             window._backupStream = null;
         } catch (err) {
-            console.error("Stop screen share error:", err);
-            // try hard reset
             const camStream = await getCameraStream();
             await replaceLocalStream(camStream);
             isScreenSharing = false;
-            shareScreenBtn.style.background = "#2c2c2e";
-            shareScreenBtn.textContent = "🖥️";
         }
     }
 
-    // ---------- CALL MANAGEMENT ----------
+    // ---------- CALL WITH FIREBASE SIGNAL FOR RELIABLE END NOTIFICATION ----------
     async function startCall(friendId) {
+        activeCallFriendId = friendId;
         callOverlay.classList.remove('hidden');
         callStatusSpan.innerText = "📞 Calling...";
         
         try {
-            // acquire camera/mic stream if not existing or if stream missing video
             if (!localStream || localStream.getVideoTracks().length === 0) {
                 const freshStream = await getCameraStream();
                 await replaceLocalStream(freshStream);
-                if (window._backupStream) window._backupStream = null;
                 isScreenSharing = false;
                 shareScreenBtn.style.background = "#2c2c2e";
-                shareScreenBtn.textContent = "🖥️";
             }
             
             const friendDoc = await db.collection('peers').doc(friendId).get();
             if (!friendDoc.exists) {
-                alert(`${friendId} is offline or not registered`);
-                endCallUI();
+                alert(`${friendId} is offline`);
+                terminateCall(true, "local");
                 return;
             }
             const friendPeerId = friendDoc.data().peerId;
             const call = currentPeer.call(friendPeerId, localStream);
             currentCall = call;
             
+            // Listen for remote stream
             call.on('stream', (remoteStream) => {
                 remoteVideo.srcObject = remoteStream;
-                callStatusSpan.innerText = "🎥 Live call · secured";
+                callStatusSpan.innerText = "🎥 Live · secure";
             });
             
+            // CRITICAL: when remote closes call, this event fires
             call.on('close', () => {
-                endCallUI();
+                if (!callOverlay.classList.contains('hidden')) {
+                    remoteEndCall();
+                }
             });
             
             call.on('error', (err) => {
                 console.error("Call error:", err);
-                alert("Call failed: network or user unavailable.");
-                endCallUI();
+                terminateCall(true, "local");
+                showNotification("Call failed: network issue", true);
             });
+            
+            // Setup data channel to listen for end-call signals
+            const pc = call.peerConnection;
+            if (pc) {
+                pc.ondatachannel = (event) => {
+                    const channel = event.channel;
+                    channel.onmessage = (msgEvent) => {
+                        try {
+                            const data = JSON.parse(msgEvent.data);
+                            if (data.type === "callEnd") {
+                                remoteEndCall();
+                            }
+                        } catch(e) {}
+                    };
+                };
+                // also create our own channel to notify remote on hangup
+                const dataChannel = pc.createDataChannel("callControl");
+                dataChannel.onopen = () => {
+                    currentCall._dataChannel = dataChannel;
+                };
+            }
+            
+            // Also listen for firestore signal (backup)
+            const callSignalListener = db.collection('callSignals')
+                .where('endedBy', '==', friendId)
+                .where('timestamp', '>', Date.now() - 10000)
+                .onSnapshot((snapshot) => {
+                    snapshot.docChanges().forEach((change) => {
+                        if (change.type === 'added' && activeCallFriendId === friendId && !callOverlay.classList.contains('hidden')) {
+                            remoteEndCall();
+                            callSignalListener();
+                        }
+                    });
+                });
+            currentCall._signalUnsub = callSignalListener;
+            
         } catch (err) {
             console.error(err);
-            alert("Cannot start call. Check camera permissions.");
-            endCallUI();
+            terminateCall(true, "local");
         }
     }
     
     function listenForCalls() {
         if (!currentPeer) return;
         currentPeer.on('call', async (call) => {
+            // determine friend id from peer id mapping?
             callOverlay.classList.remove('hidden');
             callStatusSpan.innerText = "📞 Incoming call...";
-            
             try {
-                // get local media if not ready
                 if (!localStream || localStream.getVideoTracks().length === 0) {
                     const freshStream = await getCameraStream();
                     await replaceLocalStream(freshStream);
                     isScreenSharing = false;
-                    shareScreenBtn.style.background = "#2c2c2e";
                 }
                 call.answer(localStream);
                 currentCall = call;
                 
+                // get caller's friend username from DB (optional, but we store activeCallFriendId as unknown)
+                activeCallFriendId = "caller";
+                
                 call.on('stream', (remoteStream) => {
                     remoteVideo.srcObject = remoteStream;
-                    callStatusSpan.innerText = "🎥 In call · live";
+                    callStatusSpan.innerText = "🎥 In call";
                 });
                 
                 call.on('close', () => {
-                    endCallUI();
+                    if (!callOverlay.classList.contains('hidden')) remoteEndCall();
                 });
+                
+                // Setup data channel for end signal
+                const pc = call.peerConnection;
+                if (pc) {
+                    pc.ondatachannel = (event) => {
+                        const channel = event.channel;
+                        channel.onmessage = (msgEvent) => {
+                            try {
+                                const data = JSON.parse(msgEvent.data);
+                                if (data.type === "callEnd") remoteEndCall();
+                            } catch(e) {}
+                        };
+                    };
+                    const sendChannel = pc.createDataChannel("callControl");
+                    sendChannel.onopen = () => {
+                        currentCall._dataChannel = sendChannel;
+                    };
+                }
+                
             } catch (err) {
-                console.error("Answer error", err);
-                alert("Could not answer call (camera/mic missing)");
-                endCallUI();
+                console.error("Answer error");
+                terminateCall(true, "local");
             }
         });
-    }
-    
-    function endCallUI() {
-        callOverlay.classList.add('hidden');
-        if (remoteVideo.srcObject) {
-            remoteVideo.srcObject.getTracks().forEach(t => t.stop());
-            remoteVideo.srcObject = null;
-        }
-        if (currentCall) {
-            currentCall.close();
-            currentCall = null;
-        }
-        // optional: keep local stream alive for next call, but not stop local camera (to keep preview)
-        callStatusSpan.innerText = "";
-        // reset screen sharing flag UI? but don't destroy media
-        if (isScreenSharing) {
-            // try to revert when call ends but not forced
-        }
     }
     
     async function initPeer() {
@@ -705,29 +797,29 @@
         await db.collection('peers').doc(username).set({ peerId });
         await startHeartbeat();
         await initUser();
-        // preload camera stream not yet for permissions but will request on first call
-        // optional preload for smoothness
         try {
             const previewStream = await getCameraStream();
             await replaceLocalStream(previewStream);
             window._backupStream = null;
-            isScreenSharing = false;
-        } catch(e) { console.warn("preview not granted, will request later"); }
+        } catch(e) { console.warn("camera permissions needed later"); }
         
         loginDiv.style.display = 'none';
         appDiv.classList.remove('hidden');
         errorDiv.innerText = '';
     }
     
-    // attach event listeners
+    // attach event handlers
     document.getElementById('loginBtn').onclick = handleAuth;
     document.getElementById('addFriendBtn').onclick = () => {
         const name = document.getElementById('friendName').value.trim().toLowerCase();
         if (name) sendFriendRequest(name);
     };
-    hangupBtn.onclick = () => {
-        if (currentCall) currentCall.close();
-        endCallUI();
+    hangupBtn.onclick = async () => {
+        if (currentCall) {
+            await terminateCall(true, "local");
+        } else {
+            callOverlay.classList.add('hidden');
+        }
     };
     toggleMicBtn.onclick = toggleMic;
     toggleVideoBtn.onclick = toggleVideo;
