@@ -1,1293 +1,596 @@
-<!-- Chatrix Call - Full Version with Connection Fix -->
-<!doctype html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Chatrix Call</title>
-    <link
-      rel="icon"
-      type="image/svg+xml"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e94560'%3E%3Cpath d='M12 6c-3.87 0-7 3.13-7 7s3.13 7 7 7 7-3.13 7-7-3.13-7-7-7zm0 12c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z'/%3E%3Ccircle cx='12' cy='13' r='3'/%3E%3C/svg%3E"
-    />
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Chatrix · Video Calls · Firebase Signaling</title>
     <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      body {
-        font-family: Arial, sans-serif;
-        background: #1a1a2e;
-        color: white;
-        padding: 20px;
-      }
-      .container {
-        max-width: 1400px;
-        margin: 0 auto;
-      }
-      h2 {
-        text-align: center;
-        margin-bottom: 20px;
-        color: #e94560;
-      }
-
-      /* Name Modal */
-      .modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.95);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-      }
-      .modal-content {
-        background: #16213e;
-        padding: 40px;
-        border-radius: 20px;
-        text-align: center;
-        min-width: 300px;
-      }
-      .modal-content h3 {
-        margin-bottom: 20px;
-        color: #e94560;
-      }
-      .modal-content input {
-        padding: 15px;
-        font-size: 18px;
-        border: none;
-        border-radius: 10px;
-        width: 100%;
-        margin-bottom: 20px;
-        text-align: center;
-      }
-      .modal-content button {
-        padding: 12px 30px;
-        font-size: 18px;
-        background: #e94560;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        cursor: pointer;
-      }
-      .modal-content button:hover {
-        background: #c73e54;
-      }
-
-      .id-section {
-        background: #16213e;
-        padding: 20px;
-        border-radius: 10px;
-        margin-bottom: 20px;
-        text-align: center;
-      }
-      .your-id {
-        font-size: 28px;
-        font-weight: bold;
-        margin: 10px 0;
-      }
-      .your-id span {
-        background: #0f3460;
-        padding: 10px 20px;
-        border-radius: 5px;
-        font-family: monospace;
-      }
-
-      .call-section {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        margin: 15px 0;
-        flex-wrap: wrap;
-      }
-      input {
-        padding: 10px;
-        font-size: 16px;
-        border: none;
-        border-radius: 5px;
-        width: 200px;
-        text-align: center;
-      }
-      button {
-        padding: 10px 20px;
-        font-size: 16px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        background: #e94560;
-        color: white;
-        font-weight: bold;
-      }
-      button:hover {
-        background: #c73e54;
-      }
-
-      .call-timer {
-        background: #0f3460;
-        padding: 10px;
-        border-radius: 8px;
-        text-align: center;
-        margin-bottom: 15px;
-        font-size: 18px;
-        font-weight: bold;
-      }
-      .call-timer span {
-        color: #e94560;
-      }
-
-      .main-content {
-        display: flex;
-        gap: 20px;
-        flex-wrap: wrap;
-      }
-
-      .video-section {
-        flex: 2;
-        min-width: 350px;
-      }
-      .video-box {
-        background: #16213e;
-        padding: 15px;
-        border-radius: 10px;
-        text-align: center;
-        margin-bottom: 15px;
-        position: relative;
-      }
-      video {
-        width: 100%;
-        height: 280px;
-        background: #0f3460;
-        border-radius: 8px;
-        object-fit: cover;
-      }
-
-      .name-overlay {
-        position: absolute;
-        bottom: 20px;
-        left: 20px;
-        background: rgba(0, 0, 0, 0.7);
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 14px;
-        font-weight: bold;
-        color: #e94560;
-        z-index: 10;
-      }
-
-      .screen-sharing-badge {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: #27ae60;
-        padding: 5px 10px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: bold;
-        z-index: 10;
-      }
-
-      .video-placeholder {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-        color: white;
-        font-size: 60px;
-        font-weight: bold;
-        background: rgba(0, 0, 0, 0.8);
-        width: 100px;
-        height: 100px;
-        line-height: 100px;
-        border-radius: 50%;
-        z-index: 5;
-      }
-
-      .hangup-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.9);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        border-radius: 8px;
-        z-index: 20;
-      }
-      .hangup-overlay span {
-        color: white;
-        font-size: 20px;
-        font-weight: bold;
-        background: #c0392b;
-        padding: 12px 24px;
-        border-radius: 10px;
-      }
-
-      /* Chat Section */
-      .chat-section {
-        flex: 1;
-        min-width: 280px;
-        background: #16213e;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-      }
-      .chat-header {
-        padding: 15px;
-        background: #0f3460;
-        border-radius: 10px 10px 0 0;
-        text-align: center;
-        font-weight: bold;
-        color: #e94560;
-      }
-      .chat-messages {
-        flex: 1;
-        height: 350px;
-        overflow-y: auto;
-        padding: 15px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-      .message {
-        padding: 8px 12px;
-        border-radius: 10px;
-        max-width: 85%;
-        word-wrap: break-word;
-      }
-      .message-mine {
-        background: #e94560;
-        align-self: flex-end;
-        color: white;
-      }
-      .message-theirs {
-        background: #0f3460;
-        align-self: flex-start;
-        color: white;
-      }
-      .message-sender {
-        font-size: 11px;
-        opacity: 0.7;
-        margin-bottom: 3px;
-      }
-      .chat-input-area {
-        display: flex;
-        padding: 15px;
-        gap: 10px;
-        border-top: 1px solid #0f3460;
-      }
-      .chat-input-area input {
-        flex: 1;
-        padding: 10px;
-        border: none;
-        border-radius: 5px;
-        background: #0f3460;
-        color: white;
-      }
-
-      /* Call History Section */
-      .history-section {
-        flex: 0.8;
-        min-width: 250px;
-        background: #16213e;
-        border-radius: 10px;
-        display: flex;
-        flex-direction: column;
-      }
-      .history-header {
-        padding: 15px;
-        background: #0f3460;
-        border-radius: 10px 10px 0 0;
-        text-align: center;
-        font-weight: bold;
-        color: #e94560;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      .clear-history {
-        background: #c0392b;
-        padding: 5px 10px;
-        font-size: 12px;
-        border-radius: 5px;
-        cursor: pointer;
-      }
-      .clear-history:hover {
-        background: #a93226;
-      }
-      .history-list {
-        flex: 1;
-        height: 350px;
-        overflow-y: auto;
-        padding: 10px;
-      }
-      .history-item {
-        background: #0f3460;
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 8px;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      .history-item:hover {
-        background: #1a4a6e;
-      }
-      .history-name {
-        font-weight: bold;
-        color: #e94560;
-        font-size: 14px;
-      }
-      .history-details {
-        font-size: 11px;
-        color: #aaa;
-        margin-top: 5px;
-        display: flex;
-        justify-content: space-between;
-      }
-      .history-duration {
-        color: #27ae60;
-      }
-      .history-missed {
-        color: #e94560;
-      }
-      .history-incoming {
-        color: #3498db;
-      }
-      .history-outgoing {
-        color: #f39c12;
-      }
-      .no-history {
-        text-align: center;
-        color: #aaa;
-        padding: 20px;
-      }
-
-      .controls {
-        text-align: center;
-        margin-top: 20px;
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-      .controls button {
-        margin: 0;
-        background: #0f3460;
-      }
-      .controls button.screen-share {
-        background: #27ae60;
-      }
-      .controls button.screen-share.active {
-        background: #e67e22;
-      }
-
-      .status {
-        text-align: center;
-        margin-top: 15px;
-        padding: 10px;
-        background: #0f3460;
-        border-radius: 5px;
-        font-size: 14px;
-      }
-
-      .back-button {
-        text-align: center;
-        margin-top: 20px;
-      }
-      .back-button a {
-        display: inline-block;
-        padding: 12px 30px;
-        background: #27ae60;
-        color: white;
-        text-decoration: none;
-        border-radius: 8px;
-      }
-
-      @media (max-width: 1000px) {
-        .main-content {
-          flex-direction: column;
-        }
-        .chat-messages {
-          height: 200px;
-        }
-        .history-list {
-          height: 200px;
-        }
-        video {
-          height: 220px;
-        }
-        .video-placeholder {
-          width: 70px;
-          height: 70px;
-          line-height: 70px;
-          font-size: 40px;
-        }
-      }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0a; font-family: system-ui, sans-serif; padding: 20px; }
+        .container { max-width: 500px; margin: 0 auto; }
+        
+        .auth-card { background: #121212; border-radius: 40px; padding: 32px; text-align: center; border: 1px solid #262626; }
+        .auth-card h2 { color: #00d4ff; margin-bottom: 20px; }
+        .auth-card input { width: 100%; padding: 14px; background: #1f1f1f; border: none; border-radius: 60px; color: white; margin-bottom: 12px; font-size: 16px; }
+        .auth-card button { width: 100%; background: #00d4ff; border: none; padding: 14px; border-radius: 60px; font-weight: bold; font-size: 16px; cursor: pointer; }
+        .error-msg { color: #ff8080; font-size: 13px; margin-top: 12px; }
+        
+        .friend-item { background: #121212; border-radius: 24px; padding: 14px 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 14px; border: 1px solid #242424; }
+        .avatar { width: 52px; height: 52px; background: #1e2a2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; position: relative; }
+        .online-dot { position: absolute; bottom: 2px; right: 2px; width: 14px; height: 14px; background: #22c55e; border-radius: 50%; border: 2px solid #121212; }
+        .offline-dot { background: #5f6c6f; }
+        .friend-info { flex: 1; }
+        .friend-name { color: white; font-weight: 600; font-size: 17px; }
+        .status-text { color: #888; font-size: 12px; margin-top: 4px; }
+        .call-btn { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 8px 14px; border-radius: 40px; font-size: 14px; cursor: pointer; margin-left: 8px; }
+        .call-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .call-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; flex-direction: column; }
+        .call-header { background: #1a1a1a; padding: 16px; display: flex; justify-content: space-between; align-items: center; color: white; z-index: 1001; }
+        .call-header button { background: #ff3b30; border: none; color: white; padding: 10px 20px; border-radius: 30px; font-weight: bold; cursor: pointer; }
+        .video-grid { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; padding: 20px; align-items: center; justify-content: center; }
+        .video-container { width: 45%; min-width: 200px; background: #1a1a1a; border-radius: 16px; overflow: hidden; aspect-ratio: 4/3; display: flex; align-items: center; justify-content: center; }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .hidden { display: none; }
+        
+        .incoming-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #121212; border-radius: 40px; padding: 32px; text-align: center; z-index: 2000; border: 2px solid #00d4ff; min-width: 280px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
+        .incoming-modal button { padding: 10px 20px; border-radius: 40px; font-weight: bold; margin: 0 10px; cursor: pointer; }
+        .accept { background: #22c55e; border: none; color: white; }
+        .decline { background: #ff3b30; border: none; color: white; }
+        
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .header h2 { color: #00d4ff; }
+        .logout-btn { background: #2c2c2e; border: none; color: #aaa; padding: 8px 16px; border-radius: 40px; cursor: pointer; }
+        .add-friend-section { margin-bottom: 16px; display: flex; gap: 10px; }
+        .add-friend-section input { flex: 1; padding: 12px; background: #1f1f1f; border: none; border-radius: 60px; color: white; }
+        .add-friend-section button { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 0 20px; border-radius: 60px; cursor: pointer; }
+        .group-call-btn { width: 100%; background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 14px; border-radius: 60px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        
+        .toast { position: fixed; bottom: 100px; left: 20px; right: 20px; background: #1e2a2e; border-left: 4px solid #00d4ff; padding: 14px; border-radius: 16px; z-index: 2000; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
-    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-  </head>
-  <body>
-    <div class="container">
-      <h2>📷 Chatrix Call</h2>
-
-      <div class="id-section">
-        <p>Your Call ID (share this):</p>
-        <div class="your-id"><span id="myId">Connecting...</span></div>
-        <button id="copyIdBtn">Copy ID</button>
-
-        <div class="call-section">
-          <input
-            type="text"
-            id="remoteId"
-            placeholder="Enter friend's Call ID"
-          />
-          <button id="callBtn">Call</button>
-          <button id="hangupBtn" style="background: #c0392b">Hang Up</button>
-        </div>
-      </div>
-
-      <div class="call-timer" id="callTimer" style="display: none">
-        Call Duration: <span id="timerDisplay">00:00</span>
-      </div>
-
-      <div class="main-content">
-        <div class="video-section">
-          <div class="video-box">
-            <video id="localVideo" autoplay muted playsinline></video>
-            <div id="localNameOverlay" class="name-overlay"></div>
-            <div
-              id="localScreenBadge"
-              class="screen-sharing-badge"
-              style="display: none"
-            >
-              📺 Sharing Screen
-            </div>
-            <div
-              id="localPlaceholder"
-              class="video-placeholder"
-              style="display: none"
-            ></div>
-            <div
-              id="localHangupOverlay"
-              class="hangup-overlay"
-              style="display: none"
-            >
-              <span id="localHangupMessage">Call ended</span>
-            </div>
-          </div>
-          <div class="video-box">
-            <video id="remoteVideo" autoplay playsinline></video>
-            <div id="remoteNameOverlay" class="name-overlay"></div>
-            <div
-              id="remoteScreenBadge"
-              class="screen-sharing-badge"
-              style="display: none"
-            >
-              📺 Sharing Screen
-            </div>
-            <div
-              id="remotePlaceholder"
-              class="video-placeholder"
-              style="display: none"
-            ></div>
-            <div
-              id="remoteHangupOverlay"
-              class="hangup-overlay"
-              style="display: none"
-            >
-              <span id="remoteHangupMessage">Call ended</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Chat Section -->
-        <div class="chat-section">
-          <div class="chat-header">💬 Chat</div>
-          <div class="chat-messages" id="chatMessages">
-            <div style="text-align: center; color: #aaa; padding: 20px">
-              Start a call to chat
-            </div>
-          </div>
-          <div class="chat-input-area">
-            <input
-              type="text"
-              id="chatInput"
-              placeholder="Type a message..."
-              disabled
-            />
-            <button id="sendChatBtn" disabled>Send</button>
-          </div>
-        </div>
-
-        <!-- Call History Section -->
-        <div class="history-section">
-          <div class="history-header">
-            📞 Call History
-            <span id="clearHistoryBtn" class="clear-history">Clear</span>
-          </div>
-          <div class="history-list" id="historyList">
-            <div class="no-history">No calls yet</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="controls">
-        <button id="toggleVideoBtn">🎥 Mute Video</button>
-        <button id="toggleAudioBtn">🎤 Mute Audio</button>
-        <button id="screenShareBtn" class="screen-share">
-          🖥️ Share Screen
-        </button>
-      </div>
-
-      <div class="status" id="status">
-        Ready - Share your ID to start a call
-      </div>
-
-      <div class="back-button">
-        <a href="#" id="backLink">← Back</a>
-      </div>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <div id="authSection" class="auth-card">
+        <h2><i class="fas fa-video"></i> Chatrix Calls</h2>
+        <input type="text" id="username" placeholder="Username" autocomplete="off">
+        <input type="password" id="password" placeholder="Password (min 4 chars)">
+        <button id="loginBtn">Login / Sign Up</button>
+        <div id="authError" class="error-msg"></div>
+        <p style="color:#888; font-size:12px; margin-top:16px;">🔐 Peer‑to‑peer video · Firebase signaling</p>
     </div>
 
-    <!-- Name Modal -->
-    <div id="nameModal" class="modal">
-      <div class="modal-content">
-        <h3>Enter Your Name</h3>
-        <input
-          type="text"
-          id="userName"
-          placeholder="Your name"
-          maxlength="20"
-        />
-        <button id="saveNameBtn">Start Calling</button>
-      </div>
+    <div id="appSection" class="hidden">
+        <div class="header">
+            <h2><i class="fas fa-comment"></i> Chatrix</h2>
+            <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+        
+        <div class="add-friend-section">
+            <input type="text" id="addFriendInput" placeholder="Add friend by username">
+            <button id="addFriendBtn">➕ Add</button>
+        </div>
+        
+        <div id="friendsList"></div>
+        <button id="groupCallBtn" class="group-call-btn"><i class="fas fa-users"></i> Start Group Call</button>
+        <p style="color:#666; font-size:11px; text-align:center; margin-top:20px;">🔐 WebRTC direct · No moderator</p>
     </div>
-
-    <script>
-      // CHANGE THIS TO YOUR BACK LINK
-      document.getElementById("backLink").href = "index.html";
-
-      let myName = "";
-      let myInitial = "";
-      let friendName = "Friend";
-      let friendInitial = "F";
-      let callActive = false;
-      let callStartTime = null;
-      let callTimerInterval = null;
-      let isScreenSharing = false;
-      let screenStream = null;
-      let currentCallStartTime = null;
-
-      // Call History Array
-      let callHistory = [];
-
-      // Load history from localStorage
-      function loadHistory() {
-        var saved = localStorage.getItem("chatrix_call_history");
-        if (saved) {
-          try {
-            callHistory = JSON.parse(saved);
-            renderHistory();
-          } catch (e) {
-            callHistory = [];
-          }
-        }
-      }
-
-      // Save history to localStorage
-      function saveHistory() {
-        localStorage.setItem(
-          "chatrix_call_history",
-          JSON.stringify(callHistory),
-        );
-      }
-
-      // Add call to history
-      function addToHistory(friend, duration, type, status) {
-        var now = new Date();
-        var timeStr = now.toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-        var dateStr = now.toLocaleDateString();
-
-        callHistory.unshift({
-          id: Date.now(),
-          friendName: friend,
-          duration: duration,
-          durationSec: duration,
-          type: type,
-          status: status,
-          time: timeStr,
-          date: dateStr,
-          timestamp: now.getTime(),
-        });
-
-        if (callHistory.length > 50) {
-          callHistory = callHistory.slice(0, 50);
-        }
-
-        saveHistory();
-        renderHistory();
-      }
-
-      function formatDuration(seconds) {
-        if (!seconds || seconds === 0) return "0:00";
-        var mins = Math.floor(seconds / 60);
-        var secs = seconds % 60;
-        return mins + ":" + (secs < 10 ? "0" + secs : secs);
-      }
-
-      function renderHistory() {
-        var historyList = document.getElementById("historyList");
-        if (!historyList) return;
-
-        if (callHistory.length === 0) {
-          historyList.innerHTML = '<div class="no-history">No calls yet</div>';
-          return;
-        }
-
-        var html = "";
-        for (var i = 0; i < callHistory.length; i++) {
-          var call = callHistory[i];
-          var typeIcon = call.type === "outgoing" ? "📤 " : "📥 ";
-
-          var statusText = "";
-          var statusClass = "";
-          if (call.status === "missed") {
-            statusText = "Missed";
-            statusClass = "history-missed";
-          } else if (call.status === "completed") {
-            statusText = formatDuration(call.durationSec);
-            statusClass = "history-duration";
-          } else {
-            statusText = "Ended";
-            statusClass = "";
-          }
-
-          html += '<div class="history-item" data-id="' + call.id + '">';
-          html +=
-            '<div class="history-name">' +
-            typeIcon +
-            call.friendName +
-            "</div>";
-          html += '<div class="history-details">';
-          html += "<span>" + call.date + " " + call.time + "</span>";
-          html += '<span class="' + statusClass + '">' + statusText + "</span>";
-          html += "</div></div>";
-        }
-
-        historyList.innerHTML = html;
-
-        var items = historyList.querySelectorAll(".history-item");
-        for (var j = 0; j < items.length; j++) {
-          items[j].onclick = (function (index) {
-            return function () {
-              var call = callHistory[index];
-              if (call && call.friendName) {
-                document.getElementById("remoteId").value = call.friendName;
-                updateStatus(
-                  "Filled ID from history: " + call.friendName,
-                  false,
-                );
-              }
-            };
-          })(j);
-        }
-      }
-
-      function clearHistory() {
-        if (confirm("Clear all call history?")) {
-          callHistory = [];
-          saveHistory();
-          renderHistory();
-          updateStatus("Call history cleared", false);
-        }
-      }
-
-      function generateShortId() {
-        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
-        let id = "";
-        for (let i = 0; i < 6; i++) {
-          id += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return id;
-      }
-
-      const customId = generateShortId();
-      let peer = null;
-      let localStream = null;
-      let currentCall = null;
-      let videoEnabled = true;
-      let audioEnabled = true;
-      let dataConnection = null;
-
-      // DOM elements
-      const localVideo = document.getElementById("localVideo");
-      const remoteVideo = document.getElementById("remoteVideo");
-      const localNameOverlay = document.getElementById("localNameOverlay");
-      const remoteNameOverlay = document.getElementById("remoteNameOverlay");
-      const localScreenBadge = document.getElementById("localScreenBadge");
-      const remoteScreenBadge = document.getElementById("remoteScreenBadge");
-      const localPlaceholder = document.getElementById("localPlaceholder");
-      const remotePlaceholder = document.getElementById("remotePlaceholder");
-      const localHangupOverlay = document.getElementById("localHangupOverlay");
-      const remoteHangupOverlay = document.getElementById(
-        "remoteHangupOverlay",
-      );
-      const localHangupMessage = document.getElementById("localHangupMessage");
-      const remoteHangupMessage = document.getElementById(
-        "remoteHangupMessage",
-      );
-      const myIdSpan = document.getElementById("myId");
-      const remoteIdInput = document.getElementById("remoteId");
-      const callBtn = document.getElementById("callBtn");
-      const hangupBtn = document.getElementById("hangupBtn");
-      const toggleVideoBtn = document.getElementById("toggleVideoBtn");
-      const toggleAudioBtn = document.getElementById("toggleAudioBtn");
-      const screenShareBtn = document.getElementById("screenShareBtn");
-      const statusDiv = document.getElementById("status");
-      const copyIdBtn = document.getElementById("copyIdBtn");
-      const callTimerDiv = document.getElementById("callTimer");
-      const timerDisplay = document.getElementById("timerDisplay");
-      const chatMessages = document.getElementById("chatMessages");
-      const chatInput = document.getElementById("chatInput");
-      const sendChatBtn = document.getElementById("sendChatBtn");
-      const clearHistoryBtn = document.getElementById("clearHistoryBtn");
-
-      // Name modal
-      const nameModal = document.getElementById("nameModal");
-      const userNameInput = document.getElementById("userName");
-      const saveNameBtn = document.getElementById("saveNameBtn");
-
-      saveNameBtn.onclick = function () {
-        myName = userNameInput.value.trim();
-        if (myName === "") {
-          myName = "Guest";
-        }
-        myInitial = myName.charAt(0).toUpperCase();
-        localNameOverlay.innerText = myName;
-        nameModal.style.display = "none";
-        updateStatus(
-          "Welcome " + myName + "! Share your ID to start a call",
-          false,
-        );
-        startCamera();
-      };
-
-      userNameInput.onkeypress = function (e) {
-        if (e.key === "Enter") {
-          saveNameBtn.click();
-        }
-      };
-
-      function startCallTimer() {
-        currentCallStartTime = Date.now();
-        callStartTime = Date.now();
-        callTimerDiv.style.display = "block";
-        if (callTimerInterval) clearInterval(callTimerInterval);
-        callTimerInterval = setInterval(function () {
-          if (!callStartTime) return;
-          var elapsed = Math.floor((Date.now() - callStartTime) / 1000);
-          var minutes = Math.floor(elapsed / 60);
-          var seconds = elapsed % 60;
-          timerDisplay.innerText =
-            (minutes < 10 ? "0" + minutes : minutes) +
-            ":" +
-            (seconds < 10 ? "0" + seconds : seconds);
-        }, 1000);
-      }
-
-      function stopCallTimer() {
-        if (callTimerInterval) {
-          clearInterval(callTimerInterval);
-          callTimerInterval = null;
-        }
-        callTimerDiv.style.display = "none";
-        timerDisplay.innerText = "00:00";
-
-        if (currentCallStartTime) {
-          var duration = Math.floor((Date.now() - currentCallStartTime) / 1000);
-          return duration;
-        }
-        return 0;
-      }
-
-      function addChatMessage(sender, message, isMine) {
-        if (
-          chatMessages.children.length === 1 &&
-          chatMessages.children[0].innerText.includes("Start a call")
-        ) {
-          chatMessages.innerHTML = "";
-        }
-        var msgDiv = document.createElement("div");
-        msgDiv.className =
-          "message " + (isMine ? "message-mine" : "message-theirs");
-        msgDiv.innerHTML =
-          '<div class="message-sender">' +
-          sender +
-          "</div><div>" +
-          message +
-          "</div>";
-        chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
-
-      function sendChatMessage() {
-        var message = chatInput.value.trim();
-        if (!message || !dataConnection || !dataConnection.open) return;
-
-        dataConnection.send({
-          type: "chat",
-          message: message,
-          sender: myName,
-        });
-
-        addChatMessage(myName, message, true);
-        chatInput.value = "";
-      }
-
-      function enableChat(enable) {
-        chatInput.disabled = !enable;
-        sendChatBtn.disabled = !enable;
-        if (enable) {
-          chatInput.placeholder = "Type a message...";
-        } else {
-          chatInput.placeholder = "Start a call to chat";
-        }
-      }
-
-      function showLocalHangupMessage(msg) {
-        localHangupMessage.innerText = msg;
-        localHangupOverlay.style.display = "flex";
-        setTimeout(function () {
-          localHangupOverlay.style.display = "none";
-        }, 3000);
-      }
-
-      function showRemoteHangupMessage(msg) {
-        remoteHangupMessage.innerText = msg;
-        remoteHangupOverlay.style.display = "flex";
-        setTimeout(function () {
-          remoteHangupOverlay.style.display = "none";
-        }, 3000);
-      }
-
-      function updateStatus(msg, isError) {
-        statusDiv.innerHTML = isError ? "❌ " + msg : "✅ " + msg;
-        statusDiv.style.background = isError ? "#c0392b" : "#0f3460";
-      }
-
-      copyIdBtn.onclick = function () {
-        navigator.clipboard.writeText(customId);
-        updateStatus("Call ID copied!", false);
-      };
-
-      function updateLocalPlaceholder() {
-        if (!videoEnabled && !isScreenSharing) {
-          localPlaceholder.style.display = "flex";
-          localPlaceholder.innerText = myInitial;
-        } else {
-          localPlaceholder.style.display = "none";
-        }
-      }
-
-      function updateRemotePlaceholder(show, initial) {
-        if (show) {
-          remotePlaceholder.style.display = "flex";
-          remotePlaceholder.innerText = initial || friendInitial;
-        } else {
-          remotePlaceholder.style.display = "none";
-        }
-      }
-
-      async function startScreenShare() {
-        try {
-          screenStream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
-            audio: false,
-          });
-
-          screenStream.oninactive = function () {
-            if (isScreenSharing) stopScreenShare();
-          };
-
-          if (currentCall && localStream) {
-            const screenTrack = screenStream.getVideoTracks()[0];
-            const sender = currentCall.peerConnection
-              .getSenders()
-              .find(function (s) {
-                return s.track && s.track.kind === "video";
-              });
-            if (sender) {
-              sender.replaceTrack(screenTrack);
-            }
-          }
-
-          localVideo.srcObject = screenStream;
-          isScreenSharing = true;
-          screenShareBtn.innerHTML = "🖥️ Stop Sharing";
-          screenShareBtn.classList.add("active");
-          localScreenBadge.style.display = "block";
-          localPlaceholder.style.display = "none";
-          updateStatus("Screen sharing started", false);
-
-          if (dataConnection && dataConnection.open) {
-            dataConnection.send({ type: "screenShare", active: true });
-          }
-        } catch (err) {
-          updateStatus("Screen share cancelled", true);
-        }
-      }
-
-      async function stopScreenShare() {
-        if (screenStream) {
-          screenStream.getTracks().forEach(function (track) {
-            track.stop();
-          });
-          screenStream = null;
-        }
-
-        if (currentCall && localStream) {
-          const cameraTrack = localStream.getVideoTracks()[0];
-          if (cameraTrack) {
-            const sender = currentCall.peerConnection
-              .getSenders()
-              .find(function (s) {
-                return s.track && s.track.kind === "video";
-              });
-            if (sender) {
-              sender.replaceTrack(cameraTrack);
-            }
-          }
-        }
-
-        if (localStream) {
-          localVideo.srcObject = localStream;
-        }
-
-        isScreenSharing = false;
-        screenShareBtn.innerHTML = "🖥️ Share Screen";
-        screenShareBtn.classList.remove("active");
-        localScreenBadge.style.display = "none";
-        updateLocalPlaceholder();
-        updateStatus("Screen sharing stopped", false);
-
-        if (dataConnection && dataConnection.open) {
-          dataConnection.send({ type: "screenShare", active: false });
-        }
-      }
-
-      function toggleScreenShare() {
-        if (!currentCall) {
-          updateStatus("Start a call first", true);
-          return;
-        }
-        if (isScreenSharing) {
-          stopScreenShare();
-        } else {
-          startScreenShare();
-        }
-      }
-
-      function startCamera() {
-        navigator.mediaDevices
-          .getUserMedia({ video: true, audio: true })
-          .then(function (stream) {
-            localStream = stream;
-            localVideo.srcObject = stream;
-            videoEnabled = true;
-            audioEnabled = true;
-            toggleVideoBtn.innerHTML = "🎥 Mute Video";
-            toggleAudioBtn.innerHTML = "🎤 Mute Audio";
-            updateLocalPlaceholder();
-            updateStatus("Camera ready - Your ID: " + customId, false);
-
-            initPeer();
-          })
-          .catch(function (err) {
-            updateStatus("Camera error: " + err.message, true);
-          });
-      }
-
-      function hangUp(isInitiator, isMissed) {
-        callActive = false;
-        var duration = stopCallTimer();
-        enableChat(false);
-
-        if (currentCallStartTime && duration > 0 && friendName !== "Friend") {
-          var status = isMissed ? "missed" : "completed";
-          addToHistory(
-            friendName,
-            duration,
-            isInitiator ? "outgoing" : "incoming",
-            status,
-          );
-        }
-
-        if (dataConnection && dataConnection.open) {
-          dataConnection.send({ type: "hangup", fromName: myName });
-        }
-
-        if (currentCall) {
-          currentCall.close();
-          currentCall = null;
-        }
-
-        if (dataConnection) {
-          dataConnection.close();
-          dataConnection = null;
-        }
-
-        if (isScreenSharing) {
-          stopScreenShare();
-        }
-
-        if (remoteVideo.srcObject) {
-          remoteVideo.srcObject = null;
-        }
-
-        updateRemotePlaceholder(true, friendInitial);
-        remoteNameOverlay.innerText = "";
-        remoteScreenBadge.style.display = "none";
-
-        if (isInitiator) {
-          showLocalHangupMessage("You hung up on " + friendName);
-          updateStatus("You hung up on " + friendName, false);
-        } else {
-          if (isMissed) {
-            showLocalHangupMessage("Missed call from " + friendName);
-            updateStatus("Missed call from " + friendName, false);
-          } else {
-            showLocalHangupMessage(friendName + " hung up");
-            updateStatus(friendName + " hung up", false);
-          }
-        }
-
-        chatMessages.innerHTML =
-          '<div style="text-align: center; color: #aaa; padding: 20px;">Start a call to chat</div>';
-        currentCallStartTime = null;
-      }
-
-      function setupDataConnection(conn) {
-        conn.on("open", function () {
-          conn.send({ type: "name", name: myName, initial: myInitial });
-        });
-
-        conn.on("data", function (data) {
-          if (data.type === "name") {
-            friendName = data.name;
-            friendInitial = data.initial;
-            remoteNameOverlay.innerText = friendName;
-            updateRemotePlaceholder(true, friendInitial);
-            updateStatus("Connected with " + friendName, false);
-          } else if (data.type === "hangup") {
-            if (callActive) hangUp(false, false);
-          } else if (data.type === "chat") {
-            addChatMessage(data.sender, data.message, false);
-          } else if (data.type === "screenShare") {
-            if (data.active) {
-              remoteScreenBadge.style.display = "block";
-              updateStatus(friendName + " is sharing their screen", false);
-            } else {
-              remoteScreenBadge.style.display = "none";
-              updateStatus(friendName + " stopped sharing screen", false);
-            }
-          } else if (data.type === "videoToggle") {
-            if (data.enabled === false) {
-              remotePlaceholder.style.display = "flex";
-              remotePlaceholder.innerText = friendInitial;
-            } else {
-              remotePlaceholder.style.display = "none";
-            }
-          }
-        });
-
-        conn.on("close", function () {
-          if (callActive) hangUp(false, false);
-        });
-      }
-
-      // ============================================
-      // FIXED PEER CONNECTION WITH TURN SERVERS
-      // This helps calls work across different networks
-      // ============================================
-      function initPeer() {
-        peer = new Peer(customId, {
-          config: {
-            iceServers: [
-              { urls: "stun:stun.l.google.com:19302" },
-              { urls: "stun:stun1.l.google.com:19302" },
-              {
-                urls: "turn:openrelay.metered.ca:80",
-                username: "openrelayproject",
-                credential: "openrelayproject",
-              },
-              {
-                urls: "turn:openrelay.metered.ca:443",
-                username: "openrelayproject",
-                credential: "openrelayproject",
-              },
-            ],
-          },
-        });
-
-        peer.on("open", function (id) {
-          myIdSpan.innerText = customId;
-        });
-
-        peer.on("connection", function (conn) {
-          dataConnection = conn;
-          setupDataConnection(conn);
-        });
-
-        peer.on("call", function (call) {
-          if (callActive) {
-            call.close();
+</div>
+
+<div id="callOverlay" class="call-overlay hidden">
+    <div class="call-header">
+        <span><i class="fas fa-video"></i> In call</span>
+        <button id="endCallBtn">End Call</button>
+    </div>
+    <div class="video-grid" id="videoGrid">
+        <div class="video-container"><video id="localVideo" autoplay muted playsinline></video></div>
+        <div class="video-container"><video id="remoteVideo" autoplay playsinline></video></div>
+    </div>
+</div>
+
+<script>
+    // ============ FIREBASE CONFIG ============
+    const firebaseConfig = {
+        apiKey: "AIzaSyAW4j8PG_rzXIe8Lj8lLMnSSjZSUnLkhTk",
+        authDomain: "tiktok-211df.firebaseapp.com",
+        projectId: "tiktok-211df",
+        storageBucket: "tiktok-211df.firebasestorage.app",
+        messagingSenderId: "835878907951",
+        appId: "1:835878907951:web:83e64a7d9e28d6706056da"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    
+    // ============ GLOBALS ============
+    let currentUserId = null;
+    let localStream = null;
+    let peerConnection = null;
+    let currentCallDocId = null;   // Firestore document id for this call's signaling
+    let heartbeatInterval = null;
+    let callListenerUnsub = null;
+    let signalListenerUnsub = null;
+    const demoUsers = ['Alice', 'Bob', 'Charlie', 'Diana'];
+    
+    const configuration = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            { urls: 'stun:stun2.l.google.com:19302' }
+        ]
+    };
+    
+    function showToast(msg) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+    
+    // ============ WEBRTC WITH FIRESTORE SIGNALING ============
+    async function startCall(friendName, isVideo) {
+        const status = await getStatus(friendName);
+        if (status !== 'online') {
+            showToast(`${friendName} is offline`);
             return;
-          }
-
-          updateStatus("Incoming call...", false);
-
-          if (localStream) {
-            call.answer(localStream);
-            call.on("stream", function (remoteStream) {
-              remoteVideo.srcObject = remoteStream;
-              updateRemotePlaceholder(false, "");
-              updateStatus("Connected!", false);
-              callActive = true;
-              startCallTimer();
-              enableChat(true);
+        }
+        
+        // Create a unique call ID
+        const callId = `${currentUserId}_${friendName}_${Date.now()}`;
+        const callDocRef = db.collection('calls').doc(callId);
+        
+        // Store call offer in Firestore (signaling)
+        await callDocRef.set({
+            from: currentUserId,
+            to: friendName,
+            status: 'ringing',
+            roomName: callId,
+            isVideo: true,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            offer: null,      // will be filled after we create it
+            answer: null,
+            iceCandidates: []
+        });
+        currentCallDocId = callId;
+        
+        // Show call UI
+        document.getElementById('callOverlay').classList.remove('hidden');
+        document.getElementById('appSection').classList.add('hidden');
+        
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            
+            peerConnection.ontrack = (event) => {
+                document.getElementById('remoteVideo').srcObject = event.streams[0];
+                showToast("Remote video connected");
+            };
+            
+            peerConnection.onicecandidate = async (event) => {
+                if (event.candidate) {
+                    // Store ICE candidate in Firestore
+                    await callDocRef.update({
+                        iceCandidates: firebase.firestore.FieldValue.arrayUnion({
+                            candidate: event.candidate,
+                            from: currentUserId
+                        })
+                    });
+                }
+            };
+            
+            // Create offer
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            await callDocRef.update({ offer: offer });
+            
+            // Listen for answer and remote ICE candidates
+            signalListenerUnsub = callDocRef.onSnapshot(async (snap) => {
+                const data = snap.data();
+                if (!data) return;
+                
+                // When answer arrives
+                if (data.answer && peerConnection.signalingState === 'have-local-offer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                    showToast("Call connected");
+                    // Update call status to active
+                    await callDocRef.update({ status: 'active' });
+                }
+                
+                // Process remote ICE candidates
+                if (data.iceCandidates && data.iceCandidates.length) {
+                    for (const ice of data.iceCandidates) {
+                        if (ice.from !== currentUserId) {
+                            try {
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(ice.candidate));
+                            } catch(e) { console.log("ICE error", e); }
+                        }
+                    }
+                    // Clear processed candidates
+                    await callDocRef.update({ iceCandidates: [] });
+                }
             });
-            call.on("close", function () {
-              if (callActive) hangUp(false, false);
+            
+            await setStatus(currentUserId, 'busy');
+            showToast(`Calling ${friendName}...`);
+        } catch (err) {
+            console.error(err);
+            showToast("Could not access camera/mic");
+            endCall();
+        }
+    }
+    
+    async function acceptCall(callId, fromUser, isVideo) {
+        currentCallDocId = callId;
+        const callDocRef = db.collection('calls').doc(callId);
+        
+        document.getElementById('callOverlay').classList.remove('hidden');
+        document.getElementById('appSection').classList.add('hidden');
+        
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+            
+            peerConnection = new RTCPeerConnection(configuration);
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            
+            peerConnection.ontrack = (event) => {
+                document.getElementById('remoteVideo').srcObject = event.streams[0];
+                showToast("Remote video connected");
+            };
+            
+            peerConnection.onicecandidate = async (event) => {
+                if (event.candidate) {
+                    await callDocRef.update({
+                        iceCandidates: firebase.firestore.FieldValue.arrayUnion({
+                            candidate: event.candidate,
+                            from: currentUserId
+                        })
+                    });
+                }
+            };
+            
+            // Listen for offer
+            const unsubOffer = callDocRef.onSnapshot(async (snap) => {
+                const data = snap.data();
+                if (!data) return;
+                
+                if (data.offer && !peerConnection.currentRemoteDescription) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    await callDocRef.update({ answer: answer });
+                    unsubOffer();
+                }
+                
+                if (data.iceCandidates && data.iceCandidates.length) {
+                    for (const ice of data.iceCandidates) {
+                        if (ice.from !== currentUserId) {
+                            try {
+                                await peerConnection.addIceCandidate(new RTCIceCandidate(ice.candidate));
+                            } catch(e) { console.log(e); }
+                        }
+                    }
+                    await callDocRef.update({ iceCandidates: [] });
+                }
             });
-            currentCall = call;
-
-            var conn = peer.connect(call.peer);
-            dataConnection = conn;
-            setupDataConnection(conn);
-          }
-        });
-
-        peer.on("error", function (err) {
-          console.error("Peer error:", err);
-          updateStatus("Connection error - refresh page", true);
-        });
-      }
-
-      callBtn.onclick = function () {
-        var remoteId = remoteIdInput.value.trim();
-        if (!remoteId) {
-          updateStatus("Enter a Call ID", true);
-          return;
+            
+            // Update call status to accepted
+            await callDocRef.update({ status: 'accepted' });
+            await setStatus(currentUserId, 'busy');
+            showToast("Call accepted");
+            
+            // Store listener reference to clean up later
+            signalListenerUnsub = unsubOffer;
+        } catch (err) {
+            console.error(err);
+            showToast("Could not start call");
+            endCall();
         }
-        if (remoteId === customId) {
-          updateStatus("Cannot call yourself!", true);
-          return;
+    }
+    
+    function endCall() {
+        if (peerConnection) peerConnection.close();
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (currentCallDocId) {
+            db.collection('calls').doc(currentCallDocId).delete().catch(()=>{});
         }
-
-        if (currentCall) hangUp(true, false);
-
-        updateStatus("Calling " + remoteId + "...", false);
-
-        var conn = peer.connect(remoteId);
-        dataConnection = conn;
-        setupDataConnection(conn);
-
-        var call = peer.call(remoteId, localStream);
-        call.on("stream", function (remoteStream) {
-          remoteVideo.srcObject = remoteStream;
-          updateRemotePlaceholder(false, "");
-          updateStatus("Connected!", false);
-          callActive = true;
-          startCallTimer();
-          enableChat(true);
-        });
-        call.on("close", function () {
-          if (callActive) hangUp(false, false);
-        });
-        call.on("error", function (err) {
-          updateStatus("Call failed - ID invalid or friend offline", true);
-        });
-        currentCall = call;
-      };
-
-      hangupBtn.onclick = function () {
-        if (currentCall) {
-          hangUp(true, false);
-        } else {
-          updateStatus("No active call to hang up", true);
+        if (signalListenerUnsub) signalListenerUnsub();
+        peerConnection = null;
+        localStream = null;
+        currentCallDocId = null;
+        document.getElementById('callOverlay').classList.add('hidden');
+        document.getElementById('appSection').classList.remove('hidden');
+        setStatus(currentUserId, 'online');
+        showToast("Call ended");
+    }
+    
+    // ============ INCOMING CALL LISTENER (Firestore) ============
+    function listenForIncomingCalls() {
+        if (callListenerUnsub) callListenerUnsub();
+        callListenerUnsub = db.collection('calls')
+            .where('to', '==', currentUserId)
+            .where('status', '==', 'ringing')
+            .onSnapshot((snapshot) => {
+                snapshot.forEach((doc) => {
+                    const call = doc.data();
+                    if (call && call.from !== currentUserId && !document.getElementById('incomingModal')) {
+                        showIncomingCallModal(call.from, doc.id, call.isVideo);
+                    }
+                });
+            });
+    }
+    
+    function showIncomingCallModal(fromUser, callId, isVideo) {
+        const modal = document.createElement('div');
+        modal.id = 'incomingModal';
+        modal.className = 'incoming-modal';
+        modal.innerHTML = `
+            <div style="width:80px;height:80px;background:#00d4ff20;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;animation:pulse 1s infinite;">
+                <i class="fas fa-phone" style="font-size:35px;color:#00d4ff;transform:rotate(90deg);"></i>
+            </div>
+            <h3 style="color:white;">Incoming ${isVideo ? 'Video' : 'Audio'} Call</h3>
+            <p style="color:#00d4ff;margin-bottom:24px;">from <strong>${escapeHtml(fromUser)}</strong></p>
+            <div>
+                <button class="accept" onclick="acceptCall('${callId}', '${fromUser}', ${isVideo})">
+                    <i class="fas fa-phone"></i> Accept
+                </button>
+                <button class="decline" onclick="declineCall('${callId}')">
+                    <i class="fas fa-phone-slash"></i> Decline
+                </button>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    async function declineCall(callId) {
+        await db.collection('calls').doc(callId).delete();
+        document.getElementById('incomingModal')?.remove();
+    }
+    
+    async function startGroupCall() {
+        showToast("Group call: Create a unique room name and share it");
+        const room = prompt("Enter a room name (share with friends)");
+        if (room) {
+            // For group calls, we'll just create a direct call without friend check
+            await startCallForRoom(room);
         }
-      };
-
-      toggleVideoBtn.onclick = function () {
-        if (localStream && !isScreenSharing) {
-          var videoTrack = localStream.getVideoTracks()[0];
-          if (videoTrack) {
-            videoEnabled = !videoEnabled;
-            videoTrack.enabled = videoEnabled;
-            toggleVideoBtn.innerHTML = videoEnabled
-              ? "🎥 Mute Video"
-              : "🎥 Unmute Video";
-            updateLocalPlaceholder();
-            updateStatus(videoEnabled ? "Video on" : "Video off", false);
-
-            if (dataConnection && dataConnection.open) {
-              dataConnection.send({
-                type: "videoToggle",
-                enabled: videoEnabled,
-                initial: myInitial,
-              });
+    }
+    
+    async function startCallForRoom(roomName) {
+        // Simplified direct room join
+        currentCallDocId = roomName;
+        document.getElementById('callOverlay').classList.remove('hidden');
+        document.getElementById('appSection').classList.add('hidden');
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            document.getElementById('localVideo').srcObject = localStream;
+            peerConnection = new RTCPeerConnection(configuration);
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            peerConnection.ontrack = (event) => {
+                document.getElementById('remoteVideo').srcObject = event.streams[0];
+            };
+            peerConnection.onicecandidate = async (event) => {
+                if (event.candidate) {
+                    const ref = db.collection('groupSignals').doc(roomName);
+                    await ref.update({
+                        candidates: firebase.firestore.FieldValue.arrayUnion({
+                            candidate: event.candidate,
+                            from: currentUserId
+                        })
+                    });
+                }
+            };
+            // Set up a listener for the group document
+            const groupRef = db.collection('groupSignals').doc(roomName);
+            await groupRef.set({ offer: null, answer: null, candidates: [] }, { merge: true });
+            const unsubscribe = groupRef.onSnapshot(async (snap) => {
+                const data = snap.data();
+                if (!data) return;
+                if (data.offer && !peerConnection.currentRemoteDescription) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    await groupRef.update({ answer: answer });
+                }
+                if (data.answer && peerConnection.signalingState === 'have-local-offer') {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                }
+                if (data.candidates && data.candidates.length) {
+                    for (const ice of data.candidates) {
+                        if (ice.from !== currentUserId) {
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(ice.candidate));
+                        }
+                    }
+                    await groupRef.update({ candidates: [] });
+                }
+            });
+            // If we are the first, create offer
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            await groupRef.update({ offer: offer });
+            showToast(`Group call started in room ${roomName}`);
+        } catch(e) {
+            showToast("Error starting group call");
+            endCall();
+        }
+    }
+    
+    // ============ PRESENCE & FRIENDS ============
+    async function setStatus(userId, status) {
+        if (!userId) return;
+        await db.collection('presence').doc(userId).set({ status, lastSeen: new Date() }, { merge: true });
+    }
+    
+    async function getStatus(userId) {
+        try {
+            const snap = await db.collection('presence').doc(userId).get();
+            return snap.exists ? snap.data().status || 'offline' : 'offline';
+        } catch(e) { return 'offline'; }
+    }
+    
+    async function startHeartbeat() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        await setStatus(currentUserId, 'online');
+        heartbeatInterval = setInterval(() => setStatus(currentUserId, 'online'), 15000);
+        window.addEventListener('beforeunload', () => setStatus(currentUserId, 'offline'));
+    }
+    
+    async function sendFriendRequest(username) {
+        if (username === currentUserId) { showToast("Can't add yourself"); return; }
+        const userRef = db.collection('users').doc(currentUserId);
+        const userDoc = await userRef.get();
+        const currentFriends = userDoc.exists ? userDoc.data().friends || [] : [];
+        if (currentFriends.includes(username)) { showToast(`${username} already friend`); return; }
+        await userRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(username) });
+        await db.collection('users').doc(username).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUserId) });
+        showToast(`${username} added as friend!`);
+        await loadFriends();
+    }
+    
+    async function loadFriends() {
+        const userDoc = await db.collection('users').doc(currentUserId).get();
+        const friends = userDoc.exists ? userDoc.data().friends || [] : [];
+        const container = document.getElementById('friendsList');
+        if (!container) return;
+        const allSuggestions = demoUsers.filter(u => u !== currentUserId && !friends.includes(u));
+        if (friends.length === 0 && allSuggestions.length === 0) {
+            container.innerHTML = `<div style="background:#121212; border-radius:24px; padding:30px; text-align:center; color:#666;">
+                <i class="fas fa-user-plus" style="font-size:32px; margin-bottom:12px;"></i>
+                <p>No friends yet</p>
+                <p style="font-size:12px; margin-top:8px;">Add friends using their username</p>
+            </div>`;
+            return;
+        }
+        let html = '';
+        for (const friendId of friends) {
+            const status = await getStatus(friendId);
+            const isOnline = status === 'online';
+            html += `
+                <div class="friend-item">
+                    <div class="avatar"><i class="fas fa-user-circle"></i><span class="${isOnline ? 'online-dot' : 'offline-dot'}"></span></div>
+                    <div class="friend-info">
+                        <div class="friend-name">${escapeHtml(friendId)}</div>
+                        <div class="status-text">${isOnline ? '🟢 Online' : '⚫ Offline'}</div>
+                    </div>
+                    <button class="call-btn" onclick="startCall('${friendId}', true)" ${!isOnline ? 'disabled' : ''}><i class="fas fa-video"></i></button>
+                </div>
+            `;
+        }
+        if (allSuggestions.length > 0) {
+            html += `<div style="margin-top:16px; margin-bottom:8px;"><p style="color:#888; font-size:13px;">📌 Suggestions</p></div>`;
+            for (const suggestion of allSuggestions) {
+                html += `
+                    <div class="friend-item" style="opacity:0.7;">
+                        <div class="avatar"><i class="fas fa-user-plus"></i><span class="offline-dot"></span></div>
+                        <div class="friend-info">
+                            <div class="friend-name">${escapeHtml(suggestion)}</div>
+                            <div class="status-text">Not a friend yet</div>
+                        </div>
+                        <button class="call-btn" onclick="sendFriendRequest('${suggestion}')" style="background:#22c55e20; border-color:#22c55e; color:#22c55e;">➕ Add</button>
+                    </div>
+                `;
             }
-          }
-        } else if (isScreenSharing) {
-          updateStatus("Stop screen sharing first to mute camera", true);
         }
-      };
-
-      toggleAudioBtn.onclick = function () {
-        if (localStream) {
-          var audioTrack = localStream.getAudioTracks()[0];
-          if (audioTrack) {
-            audioEnabled = !audioEnabled;
-            audioTrack.enabled = audioEnabled;
-            toggleAudioBtn.innerHTML = audioEnabled
-              ? "🎤 Mute Audio"
-              : "🎤 Unmute Audio";
-            updateStatus(audioEnabled ? "Audio on" : "Audio muted", false);
-          }
+        container.innerHTML = html;
+    }
+    
+    async function initUser() {
+        const userRef = db.collection('users').doc(currentUserId);
+        const userDoc = await userRef.get();
+        if (!userDoc.exists) {
+            await userRef.set({ username: currentUserId, displayName: currentUserId, friends: [], createdAt: new Date() });
         }
-      };
-
-      screenShareBtn.onclick = toggleScreenShare;
-      sendChatBtn.onclick = sendChatMessage;
-      clearHistoryBtn.onclick = clearHistory;
-
-      chatInput.onkeypress = function (e) {
-        if (e.key === "Enter") sendChatMessage();
-      };
-
-      loadHistory();
-
-      window.onbeforeunload = function () {
-        if (currentCall) currentCall.close();
-        if (dataConnection) dataConnection.close();
-        if (peer) peer.destroy();
-        if (localStream)
-          localStream.getTracks().forEach(function (t) {
-            t.stop();
-          });
-        if (screenStream)
-          screenStream.getTracks().forEach(function (t) {
-            t.stop();
-          });
-        if (callTimerInterval) clearInterval(callTimerInterval);
-      };
-    </script>
-  </body>
+        await loadFriends();
+    }
+    
+    // ============ AUTH ============
+    async function handleAuth() {
+        const username = document.getElementById('username').value.trim().toLowerCase();
+        const password = document.getElementById('password').value;
+        const errorDiv = document.getElementById('authError');
+        const loginBtn = document.getElementById('loginBtn');
+        if (!username) { errorDiv.innerText = 'Enter username'; return; }
+        if (password.length < 4) { errorDiv.innerText = 'Password min 4 chars'; return; }
+        loginBtn.disabled = true;
+        loginBtn.innerText = 'Logging in...';
+        errorDiv.innerText = '';
+        try {
+            const userRef = db.collection('users').doc(username);
+            const doc = await userRef.get();
+            if (!doc.exists) {
+                await userRef.set({ username: username, displayName: username, friends: [], passwordHash: btoa(password), createdAt: new Date() });
+                errorDiv.innerText = '✅ Account created!';
+            } else if (doc.data().passwordHash !== btoa(password)) {
+                errorDiv.innerText = '❌ Wrong password';
+                loginBtn.disabled = false;
+                loginBtn.innerText = 'Login / Sign Up';
+                return;
+            }
+            currentUserId = username;
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('appSection').classList.remove('hidden');
+            await startHeartbeat();
+            await initUser();
+            listenForIncomingCalls();
+            for (const user of demoUsers) {
+                if (user !== currentUserId) await setStatus(user, 'online');
+            }
+            setInterval(() => { if (currentUserId) loadFriends(); }, 5000);
+            showToast(`Welcome, ${username}!`);
+        } catch (error) {
+            errorDiv.innerText = error.message;
+            loginBtn.disabled = false;
+            loginBtn.innerText = 'Login / Sign Up';
+        }
+    }
+    
+    function logout() {
+        if (heartbeatInterval) clearInterval(heartbeatInterval);
+        if (callListenerUnsub) callListenerUnsub();
+        if (signalListenerUnsub) signalListenerUnsub();
+        if (currentUserId) setStatus(currentUserId, 'offline');
+        if (peerConnection) endCall();
+        currentUserId = null;
+        document.getElementById('authSection').style.display = 'block';
+        document.getElementById('appSection').classList.add('hidden');
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        const overlay = document.getElementById('jitsiCallOverlay');
+        if (overlay) overlay.remove();
+    }
+    
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+    
+    window.startCall = startCall;
+    window.acceptCall = acceptCall;
+    window.declineCall = declineCall;
+    window.sendFriendRequest = sendFriendRequest;
+    
+    document.getElementById('loginBtn').onclick = handleAuth;
+    document.getElementById('logoutBtn').onclick = logout;
+    document.getElementById('groupCallBtn').onclick = startGroupCall;
+    document.getElementById('endCallBtn').onclick = endCall;
+    document.getElementById('addFriendBtn').onclick = () => {
+        const name = document.getElementById('addFriendInput').value.trim().toLowerCase();
+        if (name) sendFriendRequest(name);
+    };
+    
+    document.getElementById('username').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAuth(); });
+    document.getElementById('password').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleAuth(); });
+    
+    setTimeout(async () => {
+        for (const user of demoUsers) await setStatus(user, 'online');
+    }, 1000);
+    
+    console.log("✅ Chatrix ready with Firebase signaling");
+</script>
+</body>
 </html>
