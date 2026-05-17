@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Video Calls (Remote Video Fixed)</title>
+    <title>Chatrix · Full Video & Audio Calls</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0a; font-family: system-ui, sans-serif; padding: 20px; }
@@ -30,7 +30,7 @@
         .call-controls button { background: #2c2c2e; border: none; color: white; padding: 8px 16px; border-radius: 30px; cursor: pointer; font-weight: bold; }
         .call-controls button.end-call { background: #ff3b30; }
         .video-grid { flex: 1; display: flex; flex-wrap: wrap; gap: 10px; padding: 20px; background: #0a0a0a; }
-        .video-container { flex: 1; min-width: 250px; background: #1a1a1a; border-radius: 16px; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 4/3; }
+        .video-container { flex: 1; min-width: 250px; background: #1a1a1a; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; aspect-ratio: 4/3; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
         .chat-panel { width: 280px; background: #121212; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 12px; }
         .chat-messages { flex: 1; overflow-y: auto; font-size: 13px; color: #ccc; margin-bottom: 12px; }
@@ -70,7 +70,7 @@
         <input type="password" id="password" placeholder="Password (min 4 chars)">
         <button id="loginBtn">Login / Sign Up</button>
         <div id="authError" class="error-msg"></div>
-        <p style="color:#888; font-size:12px; margin-top:16px;">🔐 Peer‑to‑peer video · Remote video fixed</p>
+        <p style="color:#888; font-size:12px; margin-top:16px;">🔐 Peer‑to‑peer video · Firestore signaling</p>
     </div>
 
     <div id="appSection" class="hidden">
@@ -97,7 +97,6 @@
         <div class="call-controls">
             <button id="toggleMicBtn"><i class="fas fa-microphone"></i> Mute</button>
             <button id="toggleVideoBtn"><i class="fas fa-video"></i> Video Off</button>
-            <button id="screenShareBtn"><i class="fas fa-desktop"></i> Share Screen</button>
             <button id="toggleChatBtn"><i class="fas fa-comment"></i> Chat</button>
             <button id="endCallBtn" class="end-call"><i class="fas fa-phone-slash"></i> End Call</button>
         </div>
@@ -139,8 +138,6 @@
     let heartbeatInterval = null;
     let localVideoEnabled = true;
     let localMicEnabled = true;
-    let isScreenSharing = false;
-    let originalVideoTrack = null;
     let chatUnsub = null;
     let remoteStream = null;
 
@@ -162,25 +159,25 @@
         setTimeout(() => toast.remove(), 4000);
     }
 
-    // --- WebRTC helpers ---
+    // --- get local stream (camera + mic) ---
     async function getLocalStream() {
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+        }
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            if (localStream) {
-                localStream.getTracks().forEach(t => t.stop());
-            }
             localStream = stream;
             document.getElementById('localVideo').srcObject = localStream;
             return true;
-        } catch (e) {
-            showToast("Camera/microphone access denied");
+        } catch (err) {
+            showToast("Could not access camera/microphone");
             return false;
         }
     }
 
-    async function createPeerConnection(isCaller, callDocRef) {
+    // --- create peer connection and attach signaling listeners ---
+    async function setupPeerConnection(isCaller, callDocRef) {
         const pc = new RTCPeerConnection(configuration);
-        // Add local tracks if we have them
         if (localStream) {
             localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
         }
@@ -188,7 +185,7 @@
             if (event.streams[0]) {
                 remoteStream = event.streams[0];
                 document.getElementById('remoteVideo').srcObject = remoteStream;
-                showToast("Remote video received");
+                showToast("Remote video connected");
             }
         };
         pc.onicecandidate = async (event) => {
@@ -201,25 +198,29 @@
                 });
             }
         };
-        pc.oniceconnectionstatechange = () => {
-            console.log("ICE state:", pc.iceConnectionState);
-            if (pc.iceConnectionState === 'connected') {
+        pc.onconnectionstatechange = () => {
+            if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+                if (currentCallDocId && !document.getElementById('callEndedToast')) {
+                    showToast("The other user ended the call");
+                    endCall();
+                }
+            } else if (pc.connectionState === 'connected') {
                 showToast("Call established");
-            } else if (pc.iceConnectionState === 'failed') {
-                showToast("Connection failed");
-                endCall();
             }
         };
         return pc;
     }
 
-    // --- 1-on-1 call (caller) ---
+    // --- outbound call ---
     async function startCall(friendName) {
         const status = await getStatus(friendName);
         if (status !== 'online') {
             showToast(`${friendName} is offline`);
             return;
         }
+        const ok = await getLocalStream();
+        if (!ok) return;
+
         const callId = `${currentUserId}_${friendName}_${Date.now()}`;
         const callDocRef = db.collection('calls').doc(callId);
         await callDocRef.set({
@@ -234,28 +235,28 @@
         });
         currentCallDocId = callId;
         showCallUI();
-        const ok = await getLocalStream();
-        if (!ok) return;
-        peerConnection = await createPeerConnection(true, callDocRef);
+
+        peerConnection = await setupPeerConnection(true, callDocRef);
         const offer = await peerConnection.createOffer();
         await peerConnection.setLocalDescription(offer);
         await callDocRef.update({ offer: offer });
-        // Listen for answer and ICE
+
+        // Listen for answer & ICE
         signalListenerUnsub = callDocRef.onSnapshot(async (snap) => {
             const data = snap.data();
             if (!data) return;
             if (data.answer && peerConnection.signalingState === 'have-local-offer') {
                 await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-                showToast("Call connected");
                 await callDocRef.update({ status: 'active' });
                 setupChatListener(callId);
+                showToast("Call connected");
             }
             if (data.iceCandidates && data.iceCandidates.length) {
                 for (const ice of data.iceCandidates) {
                     if (ice.from !== currentUserId) {
                         try {
                             await peerConnection.addIceCandidate(new RTCIceCandidate(ice.candidate));
-                        } catch(e) {}
+                        } catch(e) { console.warn("ICE add error", e); }
                     }
                 }
                 await callDocRef.update({ iceCandidates: [] });
@@ -264,18 +265,20 @@
         await setStatus(currentUserId, 'busy');
     }
 
-    // --- Accept incoming call ---
+    // --- accept incoming call ---
     async function acceptCall(callId, fromUser) {
-        // Remove modal immediately
         const modal = document.getElementById('incomingModal');
         if (modal) modal.remove();
+
+        const ok = await getLocalStream();
+        if (!ok) return;
+
         currentCallDocId = callId;
         const callDocRef = db.collection('calls').doc(callId);
         showCallUI();
-        const ok = await getLocalStream();
-        if (!ok) return;
-        peerConnection = await createPeerConnection(false, callDocRef);
-        // Wait for offer
+
+        peerConnection = await setupPeerConnection(false, callDocRef);
+        // Listen for offer
         const unsubOffer = callDocRef.onSnapshot(async (snap) => {
             const data = snap.data();
             if (!data) return;
@@ -284,7 +287,8 @@
                 const answer = await peerConnection.createAnswer();
                 await peerConnection.setLocalDescription(answer);
                 await callDocRef.update({ answer: answer });
-                unsubOffer(); // stop listening for offer after we answer
+                unsubOffer(); // stop listening for offer after answering
+                setupChatListener(callId);
             }
             if (data.iceCandidates && data.iceCandidates.length) {
                 for (const ice of data.iceCandidates) {
@@ -300,7 +304,6 @@
         signalListenerUnsub = unsubOffer;
         await callDocRef.update({ status: 'active' });
         await setStatus(currentUserId, 'busy');
-        setupChatListener(callId);
         showToast("Call accepted");
     }
 
@@ -316,8 +319,12 @@
     }
 
     function endCall() {
-        if (peerConnection) peerConnection.close();
-        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (peerConnection) {
+            peerConnection.close();
+        }
+        if (localStream) {
+            localStream.getTracks().forEach(t => t.stop());
+        }
         if (currentCallDocId) {
             db.collection('calls').doc(currentCallDocId).delete().catch(()=>{});
             db.collection('callChats').doc(currentCallDocId).delete().catch(()=>{});
@@ -334,13 +341,9 @@
         document.getElementById('localVideo').srcObject = null;
         setStatus(currentUserId, 'online');
         showToast("Call ended");
-        localVideoEnabled = true;
-        localMicEnabled = true;
-        isScreenSharing = false;
-        originalVideoTrack = null;
     }
 
-    // --- Call controls ---
+    // --- call controls ---
     function toggleMic() {
         if (localStream) {
             const audioTracks = localStream.getAudioTracks();
@@ -357,42 +360,6 @@
             localVideoEnabled = videoTracks[0]?.enabled ?? true;
             const btn = document.getElementById('toggleVideoBtn');
             btn.innerHTML = localVideoEnabled ? '<i class="fas fa-video"></i> Video Off' : '<i class="fas fa-video-slash"></i> Video On';
-        }
-    }
-    async function toggleScreenShare() {
-        if (!peerConnection) return;
-        if (!isScreenSharing) {
-            try {
-                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-                const videoTrack = screenStream.getVideoTracks()[0];
-                originalVideoTrack = localStream.getVideoTracks()[0];
-                const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-                if (sender) await sender.replaceTrack(videoTrack);
-                // Update local preview
-                const newStream = new MediaStream();
-                localStream.getAudioTracks().forEach(t => newStream.addTrack(t));
-                newStream.addTrack(videoTrack);
-                localStream = newStream;
-                document.getElementById('localVideo').srcObject = localStream;
-                videoTrack.onended = () => stopScreenShare();
-                isScreenSharing = true;
-                showToast("Sharing screen");
-            } catch(e) { showToast("Screen share cancelled"); }
-        } else {
-            stopScreenShare();
-        }
-    }
-    function stopScreenShare() {
-        if (originalVideoTrack && peerConnection) {
-            const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-            if (sender) sender.replaceTrack(originalVideoTrack);
-            const newStream = new MediaStream();
-            localStream.getAudioTracks().forEach(t => newStream.addTrack(t));
-            newStream.addTrack(originalVideoTrack);
-            localStream = newStream;
-            document.getElementById('localVideo').srcObject = localStream;
-            isScreenSharing = false;
-            showToast("Screen share stopped");
         }
     }
     function toggleChat() {
@@ -412,6 +379,7 @@
     function setupChatListener(callId) {
         if (chatUnsub) chatUnsub();
         const messagesDiv = document.getElementById('chatMessages');
+        messagesDiv.innerHTML = '';
         chatUnsub = db.collection('callChats').doc(callId).collection('messages')
             .orderBy('timestamp')
             .onSnapshot(snap => {
@@ -427,37 +395,7 @@
             });
     }
 
-    // --- Incoming call listener ---
-    function listenForIncomingCalls() {
-        if (callListenerUnsub) callListenerUnsub();
-        callListenerUnsub = db.collection('calls')
-            .where('to', '==', currentUserId)
-            .where('status', '==', 'ringing')
-            .onSnapshot((snapshot) => {
-                snapshot.forEach((doc) => {
-                    const call = doc.data();
-                    if (call && call.from !== currentUserId && !document.getElementById('incomingModal')) {
-                        const modal = document.createElement('div');
-                        modal.id = 'incomingModal';
-                        modal.className = 'incoming-modal';
-                        modal.innerHTML = `
-                            <div style="width:80px;height:80px;background:#00d4ff20;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;animation:pulse 1s infinite;">
-                                <i class="fas fa-phone" style="font-size:35px;color:#00d4ff;transform:rotate(90deg);"></i>
-                            </div>
-                            <h3>Incoming Video Call</h3>
-                            <p>from <strong>${escapeHtml(call.from)}</strong></p>
-                            <div>
-                                <button class="accept" onclick="acceptCall('${doc.id}', '${call.from}')">Accept</button>
-                                <button class="decline" onclick="declineCall('${doc.id}')">Decline</button>
-                            </div>
-                        `;
-                        document.body.appendChild(modal);
-                    }
-                });
-            });
-    }
-
-    // --- Group call (simple room join) ---
+    // --- group call (simple room join) ---
     async function joinGroupCall(roomName) {
         if (!roomName) return;
         currentCallDocId = `group_${roomName}`;
@@ -481,6 +419,12 @@
                         from: currentUserId
                     })
                 });
+            }
+        };
+        peerConnection.onconnectionstatechange = () => {
+            if (peerConnection.connectionState === 'disconnected' || peerConnection.connectionState === 'failed' || peerConnection.connectionState === 'closed') {
+                showToast("The other user ended the call");
+                endCall();
             }
         };
         await groupRef.set({ offer: null, answer: null, candidates: [] }, { merge: true });
@@ -518,7 +462,37 @@
         if (roomName) await joinGroupCall(roomName);
     }
 
-    // --- Presence & Friends ---
+    // --- incoming call listener ---
+    function listenForIncomingCalls() {
+        if (callListenerUnsub) callListenerUnsub();
+        callListenerUnsub = db.collection('calls')
+            .where('to', '==', currentUserId)
+            .where('status', '==', 'ringing')
+            .onSnapshot((snapshot) => {
+                snapshot.forEach((doc) => {
+                    const call = doc.data();
+                    if (call && call.from !== currentUserId && !document.getElementById('incomingModal')) {
+                        const modal = document.createElement('div');
+                        modal.id = 'incomingModal';
+                        modal.className = 'incoming-modal';
+                        modal.innerHTML = `
+                            <div style="width:80px;height:80px;background:#00d4ff20;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center;animation:pulse 1s infinite;">
+                                <i class="fas fa-phone" style="font-size:35px;color:#00d4ff;transform:rotate(90deg);"></i>
+                            </div>
+                            <h3>Incoming Video Call</h3>
+                            <p>from <strong>${escapeHtml(call.from)}</strong></p>
+                            <div>
+                                <button class="accept" onclick="acceptCall('${doc.id}', '${call.from}')">Accept</button>
+                                <button class="decline" onclick="declineCall('${doc.id}')">Decline</button>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+                    }
+                });
+            });
+    }
+
+    // --- presence & friends (minimal, works) ---
     async function setStatus(userId, status) {
         if (!userId) return;
         await db.collection('presence').doc(userId).set({ status, lastSeen: new Date() }, { merge: true });
@@ -588,7 +562,7 @@
         setInterval(() => loadFriends(), 5000);
     }
 
-    // --- Auth ---
+    // --- auth ---
     async function handleAuth() {
         const username = document.getElementById('username').value.trim().toLowerCase();
         const password = document.getElementById('password').value;
@@ -624,6 +598,7 @@
         if(heartbeatInterval) clearInterval(heartbeatInterval);
         if(callListenerUnsub) callListenerUnsub();
         if(signalListenerUnsub) signalListenerUnsub();
+        if(chatUnsub) chatUnsub();
         if(currentUserId) setStatus(currentUserId, 'offline');
         if(peerConnection) endCall();
         currentUserId = null;
@@ -635,14 +610,13 @@
 
     function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => m==='&'?'&amp;':m==='<'?'&lt;':'&gt;'); }
 
-    // Expose functions for global use
+    // Expose functions to global scope
     window.startCall = startCall;
     window.acceptCall = acceptCall;
     window.declineCall = declineCall;
     window.sendFriendRequest = sendFriendRequest;
     window.toggleMic = toggleMic;
     window.toggleVideo = toggleVideo;
-    window.toggleScreenShare = toggleScreenShare;
     window.toggleChat = toggleChat;
     window.sendChatMessage = sendChatMessage;
     window.joinGroupCall = joinGroupCall;
@@ -664,7 +638,6 @@
         };
         document.getElementById('toggleMicBtn').onclick = toggleMic;
         document.getElementById('toggleVideoBtn').onclick = toggleVideo;
-        document.getElementById('screenShareBtn').onclick = toggleScreenShare;
         document.getElementById('toggleChatBtn').onclick = toggleChat;
         document.getElementById('sendChatBtn').onclick = sendChatMessage;
         document.getElementById('chatInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') sendChatMessage(); });
