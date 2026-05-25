@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix Cloud | Friend System & Online Status</title>
+    <title>Chatrix Cloud | Notifications & Online Status</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -174,6 +174,7 @@
         .request-actions { display: flex; gap: 8px; margin-top: 8px; }
         .accept-btn { background: #2ecc71; color: white; border: none; }
         .reject-btn { background: #e74c3c; color: white; border: none; }
+        .notif-btn-active { background: #2ecc71; color: white; border: none; }
         
         .chat-view {
             position: absolute;
@@ -260,6 +261,17 @@
         .empty { text-align: center; color: #6c6c7a; padding: 40px; }
         .typing { font-size: 11px; color: #00d4ff; margin-top: 4px; font-style: italic; }
         .section-title { color: #00d4ff; font-size: 14px; margin: 16px 0 8px 0; font-weight: bold; }
+        .notification-banner {
+            background: #00d4ff20;
+            border-radius: 16px;
+            padding: 12px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
@@ -281,6 +293,12 @@
             <div class="logo"><i class="fas fa-cloud"></i> Chatrix Cloud</div>
             <button id="refreshBtn"><i class="fas fa-sync-alt"></i></button>
         </div>
+        
+        <div id="notificationBanner" class="notification-banner hidden">
+            <span><i class="fas fa-bell"></i> Get notified when you get messages</span>
+            <button id="enableNotifBtn" style="padding: 4px 8px; font-size: 11px;">Enable</button>
+        </div>
+        
         <button class="add-btn" id="addFriendBtn"><i class="fas fa-user-plus"></i> Add Friend</button>
         
         <div id="pendingRequestsSection"></div>
@@ -377,11 +395,56 @@
     let currentUser = null;
     let currentChatId = null;
     let currentChatType = 'friend';
-    let friendsUnsubscribe = null;
-    let requestsUnsubscribe = null;
-    let typingTimeout = null;
     let presenceUnsubscribes = {};
+    let notificationsEnabled = false;
+    let unreadCounts = {};
 
+    // Notification Setup
+    async function requestNotificationPermission() {
+        if (!("Notification" in window)) {
+            alert("This browser does not support notifications");
+            return false;
+        }
+        
+        const permission = await Notification.requestPermission();
+        if (permission === "granted") {
+            notificationsEnabled = true;
+            localStorage.setItem('notificationsEnabled', 'true');
+            document.getElementById('notificationBanner').classList.add('hidden');
+            alert("✅ Notifications enabled! You'll receive alerts for new messages.");
+            return true;
+        } else {
+            alert("Notifications blocked. You can enable them in browser settings.");
+            return false;
+        }
+    }
+    
+    function showNotification(title, body, tag = null) {
+        if (!notificationsEnabled && localStorage.getItem('notificationsEnabled') === 'true') {
+            notificationsEnabled = true;
+        }
+        
+        if (!notificationsEnabled) return;
+        
+        // Only show notification if chat is not open or page is hidden
+        const isChatOpen = currentChatId && document.getElementById('chatView').classList.contains('open');
+        const isPageHidden = document.hidden;
+        
+        if (!isChatOpen || isPageHidden) {
+            try {
+                const options = {
+                    body: body,
+                    icon: "https://cdn-icons-png.flaticon.com/512/906/906377.png",
+                    badge: "https://cdn-icons-png.flaticon.com/512/906/906377.png",
+                    silent: false,
+                    vibrate: [200, 100, 200]
+                };
+                if (tag) options.tag = tag;
+                new Notification(title, options);
+            } catch(e) { console.warn("Notification failed:", e); }
+        }
+    }
+    
     // Helper Functions
     function showScreen(screen) {
         document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -437,7 +500,6 @@
         try {
             const email = `${username}@chatrix.local`;
             await auth.createUserWithEmailAndPassword(email, password);
-            // Create user document
             await db.collection('users').doc(username).set({
                 username: username,
                 displayName: username,
@@ -452,7 +514,7 @@
         }
     }
 
-    // Friend System - Render Friends with Online Status
+    // Friend System
     async function renderFriends() {
         if (!currentUser) return;
         
@@ -466,13 +528,12 @@
         
         let html = '';
         for (const friendId of friendsList) {
-            // Get friend's user data
             const friendDoc = await db.collection('users').doc(friendId).get();
             const displayName = friendDoc.exists ? friendDoc.data().displayName : friendId;
             
-            // Get online status
             const presenceSnap = await db.collection('presence').doc(friendId).get();
             const isOnline = presenceSnap.exists ? presenceSnap.data().online : false;
+            const unread = unreadCounts[friendId] || 0;
             
             html += `
                 <div class="card" onclick="openChat('${escapeHtml(friendId)}', 'friend')">
@@ -485,14 +546,24 @@
                             <div class="name">${escapeHtml(displayName)} ${isOnline ? '<span style="color:#2ecc71; font-size:10px;">● Online</span>' : '<span style="color:#7f8c8d; font-size:10px;">● Offline</span>'}</div>
                             <div class="preview">@${escapeHtml(friendId)}</div>
                         </div>
+                        ${unread > 0 ? `<div class="badge">${unread}</div>` : ''}
                     </div>
                 </div>
             `;
         }
         container.innerHTML = html;
+        
+        // Update badge total
+        const totalUnread = Object.values(unreadCounts).reduce((a,b) => a + b, 0);
+        const badge = document.getElementById('chatsBadge');
+        if (totalUnread > 0) {
+            badge.innerText = totalUnread;
+            badge.classList.remove('hidden');
+        } else {
+            badge.classList.add('hidden');
+        }
     }
 
-    // Render Pending Friend Requests
     async function renderPendingRequests() {
         if (!currentUser) return;
         
@@ -535,7 +606,6 @@
         container.innerHTML = html;
     }
 
-    // Send Friend Request
     async function sendFriendRequest() {
         const targetUsername = document.getElementById('friendUsername').value.trim().toLowerCase();
         
@@ -549,20 +619,17 @@
             return;
         }
         
-        // Check if user exists
         const targetUser = await db.collection('users').doc(targetUsername).get();
         if (!targetUser.exists) {
             alert("User not found");
             return;
         }
         
-        // Check if already friends
         if (currentUser.friends && currentUser.friends.includes(targetUsername)) {
             alert("You are already friends with this user");
             return;
         }
         
-        // Check if request already sent
         const existingRequest = await db.collection('friendRequests')
             .where('from', '==', currentUser.username)
             .where('to', '==', targetUsername)
@@ -574,7 +641,6 @@
             return;
         }
         
-        // Check for incoming pending request
         const incomingRequest = await db.collection('friendRequests')
             .where('from', '==', targetUsername)
             .where('to', '==', currentUser.username)
@@ -602,10 +668,8 @@
         }
     }
 
-    // Accept Friend Request
     window.acceptRequest = async function(fromUser) {
         try {
-            // Update the request status
             const requestsSnap = await db.collection('friendRequests')
                 .where('from', '==', fromUser)
                 .where('to', '==', currentUser.username)
@@ -620,7 +684,6 @@
             const requestDoc = requestsSnap.docs[0];
             await requestDoc.ref.update({ status: 'accepted' });
             
-            // Add to each other's friends list
             await db.collection('users').doc(currentUser.username).update({
                 friends: firebase.firestore.FieldValue.arrayUnion(fromUser)
             });
@@ -629,7 +692,6 @@
                 friends: firebase.firestore.FieldValue.arrayUnion(currentUser.username)
             });
             
-            // Refresh current user data
             const updatedUser = await db.collection('users').doc(currentUser.username).get();
             currentUser = { username: currentUser.username, ...updatedUser.data() };
             
@@ -643,7 +705,6 @@
         }
     };
 
-    // Reject Friend Request
     window.rejectRequest = async function(fromUser) {
         try {
             const requestsSnap = await db.collection('friendRequests')
@@ -664,20 +725,25 @@
         }
     };
 
-    // Chat Functions
+    // Chat Functions with Notifications
+    let messagesUnsubscribe = null;
+    let typingUnsubscribe = null;
+    
     async function openChat(chatId, type) {
         currentChatId = chatId;
         currentChatType = type;
         
+        // Clear unread count for this chat
+        unreadCounts[chatId] = 0;
+        await renderFriends();
+        
         const chatView = document.getElementById('chatView');
         chatView.classList.add('open');
         
-        // Get friend's display name
         const friendDoc = await db.collection('users').doc(chatId).get();
         const displayName = friendDoc.exists ? friendDoc.data().displayName : chatId;
         document.getElementById('chatName').innerText = displayName;
         
-        // Subscribe to online status
         subscribeToPresence(chatId, (online) => {
             const statusSpan = document.getElementById('chatOnlineStatus');
             if (statusSpan) {
@@ -685,55 +751,44 @@
             }
         });
         
-        // Load messages
         const chatDocId = [currentUser.username, chatId].sort().join('_');
         const messagesRef = db.collection('messages').doc(chatDocId).collection('chat').orderBy('timestamp');
         
-        if (window.messagesUnsubscribe) window.messagesUnsubscribe();
-        window.messagesUnsubscribe = messagesRef.onSnapshot(snapshot => {
+        if (messagesUnsubscribe) messagesUnsubscribe();
+        messagesUnsubscribe = messagesRef.onSnapshot(snapshot => {
             const container = document.getElementById('chatMessages');
             container.innerHTML = '';
+            let hasNewMessage = false;
+            
             snapshot.forEach(doc => {
                 const msg = doc.data();
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${msg.from === currentUser.username ? 'sent' : 'received'}`;
                 messageDiv.innerText = msg.text;
                 container.appendChild(messageDiv);
+                
+                // Check for new message from other user
+                if (msg.from !== currentUser.username && !msg.read) {
+                    hasNewMessage = true;
+                    doc.ref.update({ read: true });
+                }
             });
             container.scrollTop = container.scrollHeight;
-            
-            // Mark messages as read
-            if (chatId !== currentUser.username) {
-                markMessagesAsRead(chatId);
-            }
         });
         
-        // Typing listener
         const typingRef = db.collection('typing').doc(chatDocId);
-        if (window.typingUnsubscribe) window.typingUnsubscribe();
-        window.typingUnsubscribe = typingRef.onSnapshot(doc => {
+        if (typingUnsubscribe) typingUnsubscribe();
+        typingUnsubscribe = typingRef.onSnapshot(doc => {
             const data = doc.data();
             const typingDiv = document.getElementById('typingIndicator');
             if (data && data.user !== currentUser.username && data.isTyping) {
                 typingDiv.style.display = 'block';
                 typingDiv.innerText = `${displayName} is typing...`;
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => typingDiv.style.display = 'none', 2000);
+                clearTimeout(window.typingTimeout);
+                window.typingTimeout = setTimeout(() => typingDiv.style.display = 'none', 2000);
             } else {
                 typingDiv.style.display = 'none';
             }
-        });
-    }
-    
-    async function markMessagesAsRead(otherUser) {
-        const chatDocId = [currentUser.username, otherUser].sort().join('_');
-        const unreadMessages = await db.collection('messages').doc(chatDocId).collection('chat')
-            .where('from', '==', otherUser)
-            .where('read', '==', false)
-            .get();
-        
-        unreadMessages.forEach(doc => {
-            doc.ref.update({ read: true });
         });
     }
     
@@ -751,9 +806,7 @@
             read: false
         });
         
-        // Stop typing indicator
         await db.collection('typing').doc(chatDocId).delete();
-        
         input.value = '';
     }
     
@@ -773,10 +826,48 @@
         }
     }
     
+    // Listen for new messages across all chats (for notifications)
+    function setupGlobalMessageListener() {
+        if (!currentUser) return;
+        
+        // Listen to all private chats where current user is involved
+        const friends = currentUser.friends || [];
+        friends.forEach(friendId => {
+            const chatDocId = [currentUser.username, friendId].sort().join('_');
+            const messagesRef = db.collection('messages').doc(chatDocId).collection('chat');
+            
+            const unsubscribe = messagesRef.where('read', '==', false)
+                .where('from', '==', friendId)
+                .onSnapshot(snapshot => {
+                    snapshot.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const msg = change.doc.data();
+                            // Show notification
+                            if (msg.from !== currentUser.username) {
+                                showNotification(
+                                    `📨 New message from ${friendId}`,
+                                    msg.text.length > 50 ? msg.text.substring(0, 50) + '...' : msg.text,
+                                    `msg-${chatDocId}`
+                                );
+                                
+                                // Update unread count
+                                unreadCounts[friendId] = (unreadCounts[friendId] || 0) + 1;
+                                renderFriends();
+                            }
+                        }
+                    });
+                });
+            
+            // Store for cleanup
+            if (!window.globalListeners) window.globalListeners = [];
+            window.globalListeners.push(unsubscribe);
+        });
+    }
+    
     function closeChat() {
         document.getElementById('chatView').classList.remove('open');
-        if (window.messagesUnsubscribe) window.messagesUnsubscribe();
-        if (window.typingUnsubscribe) window.typingUnsubscribe();
+        if (messagesUnsubscribe) messagesUnsubscribe();
+        if (typingUnsubscribe) typingUnsubscribe();
         currentChatId = null;
     }
     
@@ -784,13 +875,11 @@
         document.getElementById(id).classList.add('hidden'); 
     }
     
-    // Groups (simplified)
     function renderGroups() {
         const container = document.getElementById('groupsList');
         container.innerHTML = '<div class="empty"><i class="fas fa-users"></i> Groups feature coming soon!</div>';
     }
     
-    // Load all user data
     async function loadUserData(user) {
         const email = user.email;
         const username = email.replace('@chatrix.local', '');
@@ -804,15 +893,22 @@
         
         document.getElementById('profileName').innerText = currentUser.displayName || currentUser.username;
         
+        // Check notification permission
+        if (Notification.permission === "granted") {
+            notificationsEnabled = true;
+            localStorage.setItem('notificationsEnabled', 'true');
+        } else if (Notification.permission !== "denied") {
+            document.getElementById('notificationBanner').classList.remove('hidden');
+        }
+        
         await renderFriends();
         await renderPendingRequests();
         renderGroups();
+        setupGlobalMessageListener();
         
-        // Set user as online
         await setUserOnline(username, true);
     }
     
-    // Refresh everything
     async function refreshData() {
         if (currentUser) {
             await renderFriends();
@@ -830,6 +926,7 @@
     document.getElementById('sendRequestBtn').onclick = sendFriendRequest;
     document.getElementById('closeAddFriendModal').onclick = () => closeModal('addFriendModal');
     document.getElementById('refreshBtn').onclick = refreshData;
+    document.getElementById('enableNotifBtn').onclick = requestNotificationPermission;
     
     document.getElementById('loginBtn').onclick = login;
     document.getElementById('signupBtn').onclick = signup;
@@ -851,19 +948,23 @@
         location.reload();
     };
     
-    // Window unload
     window.addEventListener('beforeunload', () => {
         if (currentUser) setUserOnline(currentUser.username, false);
     });
     
-    // Auth state listener
+    // Check if page becomes visible again (clear unread counts maybe)
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && currentUser) {
+            renderFriends();
+        }
+    });
+    
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             document.getElementById('loginModal').classList.add('hidden');
             await loadUserData(user);
             showScreen('chats');
             
-            // Set interval to keep presence alive
             setInterval(() => {
                 if (currentUser) setUserOnline(currentUser.username, true);
             }, 30000);
@@ -873,11 +974,19 @@
         }
     });
     
-    // Make functions global for onclick handlers
     window.openChat = openChat;
     window.acceptRequest = acceptRequest;
     window.rejectRequest = rejectRequest;
     window.closeModal = closeModal;
+    
+    // Request notification permission on load if not decided
+    if (Notification.permission === "default") {
+        setTimeout(() => {
+            if (confirm("🔔 Enable notifications to get alerts when you receive messages?")) {
+                requestNotificationPermission();
+            }
+        }, 1000);
+    }
 </script>
 </body>
 </html>
