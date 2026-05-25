@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Chat with GIFs & Notifications</title>
+    <title>Chatrix · Firebase Chat</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0a; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; }
         
         .app-container { display: flex; height: 100vh; max-width: 1200px; margin: 0 auto; }
         
-        /* Sidebar */
         .sidebar { width: 300px; background: #121212; border-right: 1px solid #242424; display: flex; flex-direction: column; }
         .sidebar-header { padding: 20px; border-bottom: 1px solid #242424; }
         .sidebar-header h2 { color: #00d4ff; font-size: 24px; display: flex; align-items: center; gap: 8px; }
@@ -36,7 +35,6 @@
         .friend-status-text { font-size: 11px; color: #888; margin-top: 2px; }
         .unread-badge { background: #ff3b30; color: white; border-radius: 12px; padding: 2px 6px; font-size: 10px; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); }
         
-        /* Chat Area */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: #0a0a0a; }
         .chat-header { padding: 20px; background: #121212; border-bottom: 1px solid #242424; display: flex; justify-content: space-between; align-items: center; }
         .chat-header h3 { color: white; }
@@ -50,7 +48,7 @@
         .gif-message img { max-width: 200px; max-height: 150px; border-radius: 12px; margin-top: 5px; cursor: pointer; }
         
         .input-area { padding: 20px; background: #121212; border-top: 1px solid #242424; display: flex; gap: 10px; flex-wrap: wrap; }
-        .input-area input { flex: 1; padding: 12px; background: #2c2c2e; border: none; border-radius: 25px; color: white; outline: none; min-width: 150px; }
+        .input-area input { flex: 1; padding: 12px; background: #2c2c2e; border: none; border-radius: 25px; color: white; outline: none; }
         .input-area button { background: #00d4ff; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; }
         .gif-btn { background: #2c2c2e; color: white; border: none; padding: 12px; border-radius: 25px; cursor: pointer; }
         
@@ -90,7 +88,7 @@
         <input type="password" id="loginPassword" placeholder="Password (min 4 chars)">
         <button id="loginBtn">Login / Sign Up</button>
         <div id="loginError" class="login-error"></div>
-        <p style="color:#888; font-size:12px; margin-top:16px;">Try: Alice, Bob, Charlie (any password works)</p>
+        <p style="color:#888; font-size:12px; margin-top:16px;">Try: Alice, Bob, Charlie (password: 1234)</p>
     </div>
 </div>
 
@@ -136,7 +134,6 @@
 <script>
     const GIPHY_API_KEY = "On2HwNckx1yjG6TK0ixJVLVSKGN0My42";
 
-    // Firebase Config
     const firebaseConfig = {
         apiKey: "AIzaSyAW4j8PG_rzXIe8Lj8lLMnSSjZSUnLkhTk",
         authDomain: "tiktok-211df.firebaseapp.com",
@@ -145,6 +142,7 @@
         messagingSenderId: "835878907951",
         appId: "1:835878907951:web:83e64a7d9e28d6706056da"
     };
+    
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
@@ -196,7 +194,7 @@
         }
     }
 
-    // ========== GIPHY ==========
+    // GIPHY
     async function searchGifs(query) {
         if (!query.trim()) return [];
         const url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`;
@@ -252,7 +250,7 @@
         });
     }
 
-    // ========== ONLINE STATUS ==========
+    // Online Status
     async function setUserOnline(userId, isOnline) {
         if (!userId) return;
         await db.collection('presence').doc(userId).set({
@@ -285,7 +283,7 @@
         });
     }
 
-    // ========== FRIEND SYSTEM ==========
+    // Friends
     async function addFriend(username) {
         if (username === currentUser) {
             showToast("You can't add yourself");
@@ -387,7 +385,7 @@
         }
     }
 
-    // ========== MESSAGING ==========
+    // Messaging
     function getChatId(user1, user2) {
         return [user1, user2].sort().join('_');
     }
@@ -496,7 +494,7 @@
         });
     }
 
-    // ========== AUTH ==========
+    // Auth
     async function handleAuth() {
         const username = document.getElementById('loginUsername').value.trim().toLowerCase();
         const password = document.getElementById('loginPassword').value;
@@ -507,42 +505,47 @@
             return;
         }
         
-        const userRef = db.collection('users').doc(username);
-        const doc = await userRef.get();
-        
-        if (!doc.exists) {
-            await userRef.set({
-                username: username,
-                displayName: username,
-                friends: [],
-                passwordHash: btoa(password),
-                createdAt: new Date()
-            });
-            errorDiv.innerText = '✅ Account created!';
-        } else if (doc.data().passwordHash !== btoa(password)) {
-            errorDiv.innerText = '❌ Wrong password';
-            return;
-        }
-        
-        currentUser = username;
-        document.getElementById('currentUserName').innerHTML = currentUser;
-        
-        await startHeartbeat();
-        await loadFriendsList();
-        buildGifPicker();
-        
-        document.getElementById('loginContainer').style.display = 'none';
-        document.getElementById('appContainer').classList.remove('hidden');
-        
-        errorDiv.innerText = '';
-        showToast(`Welcome, ${username}!`);
-        
-        // Set demo users online
-        const demoUsers = ['Alice', 'Bob', 'Charlie'];
-        for (const user of demoUsers) {
-            if (user !== currentUser) {
-                await setUserOnline(user, true);
+        try {
+            const userRef = db.collection('users').doc(username);
+            const doc = await userRef.get();
+            
+            if (!doc.exists) {
+                await userRef.set({
+                    username: username,
+                    displayName: username,
+                    friends: [],
+                    passwordHash: btoa(password),
+                    createdAt: new Date()
+                });
+                errorDiv.innerText = '✅ Account created!';
+            } else if (doc.data().passwordHash !== btoa(password)) {
+                errorDiv.innerText = '❌ Wrong password';
+                return;
             }
+            
+            currentUser = username;
+            document.getElementById('currentUserName').innerHTML = currentUser;
+            
+            await startHeartbeat();
+            await loadFriendsList();
+            buildGifPicker();
+            
+            document.getElementById('loginContainer').style.display = 'none';
+            document.getElementById('appContainer').classList.remove('hidden');
+            
+            errorDiv.innerText = '';
+            showToast(`Welcome, ${username}!`);
+            
+            // Set demo users online
+            const demoUsers = ['Alice', 'Bob', 'Charlie'];
+            for (const user of demoUsers) {
+                if (user !== currentUser) {
+                    await setUserOnline(user, true);
+                }
+            }
+        } catch (error) {
+            console.error("Auth error:", error);
+            errorDiv.innerText = 'Firebase error: ' + error.message;
         }
     }
 
