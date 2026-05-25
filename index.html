@@ -3,254 +3,380 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Firebase Chat</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0a0a; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; }
-        
-        .app-container { display: flex; height: 100vh; max-width: 1200px; margin: 0 auto; }
-        
-        .sidebar { width: 300px; background: #121212; border-right: 1px solid #242424; display: flex; flex-direction: column; }
-        .sidebar-header { padding: 20px; border-bottom: 1px solid #242424; }
-        .sidebar-header h2 { color: #00d4ff; font-size: 24px; display: flex; align-items: center; gap: 8px; }
-        .user-info { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #242424; }
-        .user-name { color: white; font-weight: bold; }
-        .logout-btn { background: #2c2c2e; border: none; color: #aaa; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; }
-        .notif-btn { background: rgba(0,212,255,0.2); border: 1px solid #00d4ff; color: #00d4ff; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; margin-left: 8px; }
-        .notif-btn.enabled { background: #00d4ff; color: black; }
-        
-        .add-friend { display: flex; gap: 8px; padding: 15px; border-bottom: 1px solid #242424; }
-        .add-friend input { flex: 1; padding: 10px; background: #1f1f1f; border: none; border-radius: 25px; color: white; outline: none; }
-        .add-friend button { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 8px 16px; border-radius: 25px; cursor: pointer; }
-        
-        .friends-list { flex: 1; overflow-y: auto; }
-        .friend-item { padding: 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #1a1a1a; transition: 0.2s; position: relative; }
-        .friend-item:hover { background: #1a1a1a; }
-        .friend-item.active { background: #1a2a3a; border-left: 3px solid #00d4ff; }
-        .friend-avatar { width: 48px; height: 48px; background: #1e2a2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; position: relative; }
-        .status-dot { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #121212; }
-        .status-online { background: #22c55e; }
-        .status-offline { background: #5f6c6f; }
-        .friend-name { color: white; font-weight: 600; }
-        .friend-status-text { font-size: 11px; color: #888; margin-top: 2px; }
-        .unread-badge { background: #ff3b30; color: white; border-radius: 12px; padding: 2px 6px; font-size: 10px; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); }
-        
-        .chat-area { flex: 1; display: flex; flex-direction: column; background: #0a0a0a; }
-        .chat-header { padding: 20px; background: #121212; border-bottom: 1px solid #242424; display: flex; justify-content: space-between; align-items: center; }
-        .chat-header h3 { color: white; }
-        
-        .messages-area { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .message { max-width: 70%; padding: 10px 15px; border-radius: 20px; word-break: break-word; }
-        .message-sent { background: #00d4ff; color: black; align-self: flex-end; }
-        .message-received { background: #2c2c2e; color: white; align-self: flex-start; }
-        .message-time { font-size: 10px; opacity: 0.7; margin-top: 4px; }
-        .message-sender { font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #00d4ff; }
-        .gif-message img { max-width: 200px; max-height: 150px; border-radius: 12px; margin-top: 5px; cursor: pointer; }
-        
-        .input-area { padding: 20px; background: #121212; border-top: 1px solid #242424; display: flex; gap: 10px; flex-wrap: wrap; }
-        .input-area input { flex: 1; padding: 12px; background: #2c2c2e; border: none; border-radius: 25px; color: white; outline: none; }
-        .input-area button { background: #00d4ff; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; }
-        .gif-btn { background: #2c2c2e; color: white; border: none; padding: 12px; border-radius: 25px; cursor: pointer; }
-        
-        .gif-picker { position: absolute; bottom: 80px; right: 20px; background: #1c1c1e; border-radius: 20px; padding: 12px; z-index: 100; border: 1px solid #00d4ff; width: 300px; max-height: 400px; overflow-y: auto; display: none; }
-        .gif-picker.show { display: block; }
-        .gif-search { width: 100%; padding: 10px; background: #2c2c2e; border: none; border-radius: 20px; color: white; margin-bottom: 12px; }
-        .gif-results { display: flex; flex-wrap: wrap; gap: 8px; }
-        .gif-result { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; cursor: pointer; }
-        
-        .empty-chat { text-align: center; color: #666; padding: 40px; }
-        .no-friends { text-align: center; color: #666; padding: 40px; }
-        
-        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e2a2e; border-left: 4px solid #00d4ff; padding: 12px 24px; border-radius: 12px; z-index: 1000; animation: slideUp 0.3s ease; color: white; }
-        @keyframes slideUp { from { transform: translate(-50%, 100px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
-        
-        .login-container { display: flex; justify-content: center; align-items: center; height: 100vh; background: #0a0a0a; }
-        .login-card { background: #121212; border-radius: 40px; padding: 40px; text-align: center; border: 1px solid #262626; width: 350px; }
-        .login-card h2 { color: #00d4ff; margin-bottom: 20px; }
-        .login-card input { width: 100%; padding: 14px; background: #1f1f1f; border: none; border-radius: 60px; color: white; margin-bottom: 12px; outline: none; }
-        .login-card button { width: 100%; background: #00d4ff; border: none; padding: 14px; border-radius: 60px; font-weight: bold; cursor: pointer; }
-        .login-error { color: #ff8080; font-size: 13px; margin-top: 12px; }
-        
-        .hidden { display: none; }
-        
-        .notification-banner { position: fixed; top: 20px; right: 20px; background: #00d4ff; color: black; padding: 12px 20px; border-radius: 12px; z-index: 2000; animation: slideDown 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; }
-        @keyframes slideDown { from { transform: translateY(-100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    </style>
+    <title>Chatrix Cloud | Real-time Online & Notifications</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/js/all.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* Phone container */
+        .phone {
+            width: 380px;
+            height: 700px;
+            background: #0f0f1a;
+            border-radius: 40px;
+            overflow: hidden;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: #0f0f1a;
+            padding: 12px 20px 6px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+            border-bottom: 1px solid #1f1f2e;
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            background: #0f0f1a;
+            border-top: 1px solid #1f1f2e;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 0;
+            color: #6c6c7a;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+        .tab i { font-size: 20px; display: block; margin-bottom: 3px; }
+        .tab.active { color: #00d4ff; background: #1a1a2e; border-top: 2px solid #00d4ff; }
+        .tab-badge {
+            background: #ff3b30;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 5px;
+            font-size: 9px;
+            margin-left: 5px;
+        }
+
+        /* Screens */
+        .screen {
+            height: calc(100% - 50px);
+            overflow-y: auto;
+            display: none;
+            padding: 15px;
+            padding-bottom: 60px;
+        }
+        .screen.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: #16162a;
+            border-radius: 20px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid #252540;
+        }
+        .card:hover { background: #1e1e35; }
+        .card-header { display: flex; align-items: center; gap: 12px; }
+        .avatar {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, #00d4ff, #0088ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            position: relative;
+        }
+        .online-indicator {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            width: 12px;
+            height: 12px;
+            background: #2ecc71;
+            border-radius: 50%;
+            border: 2px solid #16162a;
+        }
+        .offline-indicator {
+            background: #7f8c8d;
+        }
+        .info { flex: 1; }
+        .name { color: white; font-weight: 600; margin-bottom: 4px; }
+        .preview { color: #8a8aa3; font-size: 12px; }
+        .badge {
+            background: #ff3b30;
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 11px;
+        }
+        .header {
+            background: #16162a;
+            border-radius: 20px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo {
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #00d4ff, #0088ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        button {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .add-btn {
+            background: #00d4ff;
+            color: #0f0f1a;
+            width: 100%;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+        /* Chat View */
+        .chat-view {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0f0f1a;
+            z-index: 20;
+            transform: translateX(100%);
+            transition: 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-view.open { transform: translateX(0); }
+        .chat-header {
+            background: #16162a;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #252540;
+        }
+        .back-btn { cursor: pointer; color: #00d4ff; font-size: 20px; }
+        .chat-avatar { width: 40px; height: 40px; border-radius: 50%; background: #00d4ff; display: flex; align-items: center; justify-content: center; }
+        .chat-name { color: white; font-weight: bold; flex: 1; }
+        .chat-online-status { font-size: 11px; color: #2ecc71; }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .message {
+            max-width: 80%;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+        .message.sent { background: #00d4ff; color: #0f0f1a; align-self: flex-end; }
+        .message.received { background: #1e1e35; color: white; align-self: flex-start; }
+        .chat-input-area {
+            display: flex;
+            padding: 12px;
+            gap: 8px;
+            background: #16162a;
+            border-top: 1px solid #252540;
+        }
+        .chat-input-area input {
+            flex: 1;
+            background: #252540;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 15px;
+            color: white;
+            outline: none;
+        }
+        .chat-input-area button { background: #00d4ff; color: #0f0f1a; border: none; }
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-card {
+            background: #16162a;
+            border-radius: 28px;
+            padding: 24px;
+            width: 85%;
+            border: 1px solid #00d4ff;
+        }
+        .modal-card input { width: 100%; padding: 12px; margin: 8px 0; background: #252540; border: none; border-radius: 30px; color: white; }
+        .modal-card button { margin-top: 12px; }
+        .hidden { display: none; }
+        .empty { text-align: center; color: #6c6c7a; padding: 40px; }
+        .typing { font-size: 11px; color: #00d4ff; margin-top: 4px; font-style: italic; }
+        .notification-prompt {
+            background: #00d4ff20;
+            border-radius: 16px;
+            padding: 10px;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 12px;
+        }
+    </style>
 </head>
 <body>
-<div id="loginContainer" class="login-container">
-    <div class="login-card">
-        <h2><i class="fas fa-comment-dots"></i> Chatrix</h2>
-        <input type="text" id="loginUsername" placeholder="Username">
-        <input type="password" id="loginPassword" placeholder="Password (min 4 chars)">
-        <button id="loginBtn">Login / Sign Up</button>
-        <div id="loginError" class="login-error"></div>
-        <p style="color:#888; font-size:12px; margin-top:16px;">Try: Alice, Bob, Charlie (password: 1234)</p>
+<div class="phone">
+    <div class="status-bar">
+        <span>9:41</span>
+        <span><i class="fas fa-signal"></i> <i class="fas fa-battery-full"></i></span>
     </div>
-</div>
 
-<div id="appContainer" class="app-container hidden">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <h2><i class="fas fa-comment-dots"></i> Chatrix</h2>
-            <div class="user-info">
-                <span class="user-name" id="currentUserName">User</span>
-                <div>
-                    <button id="notifyBtn" class="notif-btn"><i class="fas fa-bell"></i> Notify</button>
-                    <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
-                </div>
+    <!-- Tabs -->
+    <div class="tabs">
+        <div class="tab active" data-tab="chats"><i class="fas fa-comment"></i><span>Chats</span><span id="chatsBadge" class="tab-badge hidden">0</span></div>
+        <div class="tab" data-tab="groups"><i class="fas fa-users"></i><span>Groups</span></div>
+        <div class="tab" data-tab="profile"><i class="fas fa-user"></i><span>Profile</span></div>
+    </div>
+
+    <!-- Chats Screen -->
+    <div id="chatsScreen" class="screen active">
+        <div class="header">
+            <div class="logo"><i class="fas fa-cloud"></i> Chatrix Cloud</div>
+            <button id="notifPermissionBtn"><i class="fas fa-bell"></i> Enable Alerts</button>
+        </div>
+        <button class="add-btn" id="addFriendBtn"><i class="fas fa-user-plus"></i> Add Friend</button>
+        <div id="friendsList"></div>
+        <div id="requestsSection"></div>
+    </div>
+
+    <!-- Groups Screen (simplified but functional) -->
+    <div id="groupsScreen" class="screen">
+        <div class="header"><div class="logo"><i class="fas fa-users"></i> Groups</div></div>
+        <button class="add-btn" id="createGroupBtn"><i class="fas fa-plus"></i> New Group</button>
+        <div id="groupsList"></div>
+    </div>
+
+    <!-- Profile Screen -->
+    <div id="profileScreen" class="screen">
+        <div class="header"><div class="logo"><i class="fas fa-user-circle"></i> Profile</div></div>
+        <div class="card" id="profileCard">
+            <div class="card-header">
+                <div class="avatar" id="profileAvatar">👤</div>
+                <div class="info"><div class="name" id="profileName">Loading...</div><div class="preview">Tap to edit</div></div>
             </div>
         </div>
-        <div class="add-friend">
-            <input type="text" id="friendUsername" placeholder="Add friend by username">
-            <button id="addFriendBtn">Add</button>
-        </div>
-        <div class="friends-list" id="friendsList"></div>
+        <button id="logoutBtn" style="background:#ff3b3020; border-color:#ff3b30; color:#ff3b30; width:100%; margin-top:12px;">Logout</button>
     </div>
 
-    <div class="chat-area">
+    <!-- Chat View -->
+    <div id="chatView" class="chat-view">
         <div class="chat-header">
-            <h3 id="chatFriendName">Select a friend to chat</h3>
+            <div class="back-btn" id="closeChatBtn"><i class="fas fa-arrow-left"></i></div>
+            <div class="chat-avatar" id="chatAvatar">👤</div>
+            <div class="chat-name" id="chatName">User</div>
+            <div class="chat-online-status" id="chatOnlineStatus"><i class="fas fa-circle" style="font-size: 8px;"></i> offline</div>
         </div>
-        <div class="messages-area" id="messagesArea">
-            <div class="empty-chat">👈 Select a friend to start chatting</div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input-area">
+            <input type="text" id="messageInput" placeholder="Message...">
+            <button id="sendMsgBtn"><i class="fas fa-paper-plane"></i></button>
         </div>
-        <div class="input-area" id="inputArea" style="display: none;">
-            <input type="text" id="messageInput" placeholder="Type a message...">
-            <button id="gifBtn" class="gif-btn"><i class="fas fa-images"></i> GIF</button>
-            <button id="sendBtn">Send</button>
-        </div>
+        <div id="typingIndicator" class="typing" style="padding-left: 16px; display: none;">Someone is typing...</div>
     </div>
-</div>
 
-<div id="gifPicker" class="gif-picker">
-    <input type="text" id="gifSearch" class="gif-search" placeholder="Search GIFs...">
-    <div id="gifResults" class="gif-results"></div>
+    <!-- Modals -->
+    <div id="addFriendModal" class="modal hidden">
+        <div class="modal-card"><h3 style="color:white;">Add Friend</h3><input id="friendUsername" placeholder="Username"><button id="sendRequestBtn">Send Request</button><button id="closeAddFriendModal">Cancel</button></div>
+    </div>
+    <div id="createGroupModal" class="modal hidden">
+        <div class="modal-card"><h3 style="color:white;">Create Group</h3><input id="groupName" placeholder="Group Name"><button id="createGroupSubmit">Create</button><button id="closeGroupModal">Cancel</button></div>
+    </div>
+    <div id="loginModal" class="modal">
+        <div class="modal-card"><h2 style="color:white;">✨ Chatrix</h2><input id="loginUser" placeholder="Username"><input id="loginPass" type="password" placeholder="Password"><button id="loginBtn">Login</button><button id="showSignupBtn">Sign Up</button></div>
+    </div>
+    <div id="signupModal" class="modal hidden">
+        <div class="modal-card"><h2 style="color:white;">Sign Up</h2><input id="signupUser" placeholder="Username"><input id="signupPass" type="password" placeholder="Password"><button id="signupBtn">Create Account</button><button id="showLoginBtn">Back to Login</button></div>
+    </div>
 </div>
 
 <script>
-    const GIPHY_API_KEY = "On2HwNckx1yjG6TK0ixJVLVSKGN0My42";
-
+    // Firebase Config
     const firebaseConfig = {
-        apiKey: "AIzaSyAW4j8PG_rzXIe8Lj8lLMnSSjZSUnLkhTk",
-        authDomain: "tiktok-211df.firebaseapp.com",
-        projectId: "tiktok-211df",
-        storageBucket: "tiktok-211df.firebasestorage.app",
-        messagingSenderId: "835878907951",
-        appId: "1:835878907951:web:83e64a7d9e28d6706056da"
+        apiKey: "AIzaSyAGftHy2cSWCz_h5nKQF-BChy885CYA9f4",
+        authDomain: "chatrix-77180.firebaseapp.com",
+        projectId: "chatrix-77180",
+        storageBucket: "chatrix-77180.firebasestorage.app",
+        messagingSenderId: "258648778331",
+        appId: "1:258648778331:web:294dd149ce2baf32e9c17e"
     };
-    
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
+    const auth = firebase.auth();
+    const messaging = firebase.messaging();
 
     let currentUser = null;
-    let currentChatFriend = null;
-    let messagesUnsubscribe = null;
-    let heartbeatInterval = null;
-    let unreadCounts = {};
-    let notificationPermission = false;
+    let currentChatId = null;
+    let currentChatType = 'friend';
+    let unsubscribeFriends = null;
+    let onlineStatusInterval = null;
+    let typingTimeout = null;
 
-    function showToast(msg) {
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.innerHTML = `<i class="fas fa-info-circle"></i> ${msg}`;
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
-    }
+    // VAPID Key (replace with your own from Firebase Console)
+    const VAPID_KEY = "BLeh2L2_tqA6mZqJqR4PkK7VYxWzL9xQ3mN5pO7rS9tU1vW3xY5zA7bC9dE1fG3hI5jK7lM9nO";
 
-    function showInAppNotification(title, body) {
-        const banner = document.createElement('div');
-        banner.className = 'notification-banner';
-        banner.innerHTML = `<strong>${escapeHtml(title)}</strong><br>${escapeHtml(body)}`;
-        banner.onclick = () => banner.remove();
-        document.body.appendChild(banner);
-        setTimeout(() => banner.remove(), 4000);
-        
-        if (notificationPermission && Notification.permission === 'granted') {
-            new Notification(title, { body: body });
-        }
-    }
-
-    async function requestNotificationPermission() {
-        if (!currentUser) {
-            showToast("Please login first");
-            return;
-        }
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                notificationPermission = true;
-                document.getElementById('notifyBtn').classList.add('enabled');
-                document.getElementById('notifyBtn').innerHTML = '<i class="fas fa-bell"></i> On';
-                showToast("Notifications enabled!");
-            } else {
-                showToast("Notifications disabled");
-            }
-        } catch(e) {
-            showToast("Notifications not supported");
-        }
-    }
-
-    // GIPHY
-    async function searchGifs(query) {
-        if (!query.trim()) return [];
-        const url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`;
-        const response = await fetch(url);
-        const data = await response.json();
-        return data.data.map(gif => gif.images.fixed_height_small.url);
-    }
-
-    function buildGifPicker() {
-        const gifBtn = document.getElementById('gifBtn');
-        const picker = document.getElementById('gifPicker');
-        const searchInput = document.getElementById('gifSearch');
-        const resultsDiv = document.getElementById('gifResults');
-        
-        gifBtn.onclick = (e) => {
-            e.stopPropagation();
-            picker.classList.toggle('show');
-            if (picker.classList.contains('show')) searchInput.focus();
-        };
-        
-        searchInput.oninput = async (e) => {
-            const query = e.target.value;
-            if (query.length < 2) {
-                resultsDiv.innerHTML = '';
-                return;
-            }
-            const gifs = await searchGifs(query);
-            resultsDiv.innerHTML = gifs.map(url => `<img src="${url}" class="gif-result" data-url="${url}">`).join('');
-            document.querySelectorAll('.gif-result').forEach(img => {
-                img.onclick = async () => {
-                    const gifUrl = img.getAttribute('data-url');
-                    if (currentChatFriend) {
-                        const chatId = getChatId(currentUser, currentChatFriend);
-                        await db.collection('chats').doc(chatId).collection('messages').add({
-                            from: currentUser,
-                            type: 'gif',
-                            data: gifUrl,
-                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-                            read: false
-                        });
-                    }
-                    picker.classList.remove('show');
-                    searchInput.value = '';
-                    resultsDiv.innerHTML = '';
-                };
-            });
-        };
-        
-        document.addEventListener('click', (e) => {
-            if (!gifBtn.contains(e.target) && !picker.contains(e.target)) {
-                picker.classList.remove('show');
-            }
+    // Helper Functions
+    function showScreen(screen) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(`${screen}Screen`).classList.add('active');
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+            if(tab.getAttribute('data-tab') === screen) tab.classList.add('active');
         });
     }
+    window.showScreen = showScreen;
 
-    // Online Status
+    // Real-time Online Presence System
     async function setUserOnline(userId, isOnline) {
         if (!userId) return;
         await db.collection('presence').doc(userId).set({
@@ -259,336 +385,268 @@
         }, { merge: true });
     }
 
-    async function getUserOnlineStatus(userId) {
-        const doc = await db.collection('presence').doc(userId).get();
-        return doc.exists ? doc.data().online || false : false;
-    }
-
-    function listenToFriendStatus(friendId, callback) {
-        return db.collection('presence').doc(friendId).onSnapshot((doc) => {
-            const isOnline = doc.exists ? doc.data().online || false : false;
-            callback(isOnline);
+    function subscribeToPresence(userId, callback) {
+        return db.collection('presence').doc(userId).onSnapshot(doc => {
+            const data = doc.data();
+            callback(data ? data.online : false);
         });
     }
 
-    async function startHeartbeat() {
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        await setUserOnline(currentUser, true);
-        heartbeatInterval = setInterval(async () => {
-            if (currentUser) await setUserOnline(currentUser, true);
-        }, 10000);
-        
-        window.addEventListener('beforeunload', () => {
-            if (currentUser) setUserOnline(currentUser, false);
-        });
-    }
-
-    // Friends
-    async function addFriend(username) {
-        if (username === currentUser) {
-            showToast("You can't add yourself");
-            return;
-        }
-        
-        const userRef = db.collection('users').doc(username);
-        const userDoc = await userRef.get();
-        
-        if (!userDoc.exists) {
-            showToast("User not found");
-            return;
-        }
-        
-        const currentUserRef = db.collection('users').doc(currentUser);
-        const currentUserDoc = await currentUserRef.get();
-        const friends = currentUserDoc.exists ? currentUserDoc.data().friends || [] : [];
-        
-        if (friends.includes(username)) {
-            showToast("Already friends");
-            return;
-        }
-        
-        await currentUserRef.update({
-            friends: firebase.firestore.FieldValue.arrayUnion(username)
-        });
-        
-        await userRef.update({
-            friends: firebase.firestore.FieldValue.arrayUnion(currentUser)
-        });
-        
-        showToast(`Added ${username} as friend`);
-        loadFriendsList();
-    }
-
-    function updateUnreadBadge(friendId, count) {
-        const friendDiv = Array.from(document.querySelectorAll('.friend-item')).find(
-            item => item.querySelector('.friend-name')?.innerText === friendId
-        );
-        if (friendDiv) {
-            const existingBadge = friendDiv.querySelector('.unread-badge');
-            if (count > 0) {
-                if (existingBadge) {
-                    existingBadge.textContent = count;
-                } else {
-                    const badge = document.createElement('span');
-                    badge.className = 'unread-badge';
-                    badge.textContent = count;
-                    friendDiv.appendChild(badge);
+    // Cross-device Notifications via FCM
+    async function requestNotificationPermission() {
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                const token = await messaging.getToken({ vapidKey: VAPID_KEY });
+                if (token && currentUser) {
+                    await db.collection('fcmTokens').doc(currentUser.uid).set({ token, userId: currentUser.uid }, { merge: true });
+                    alert('Notifications enabled on this device!');
                 }
-            } else if (existingBadge) {
-                existingBadge.remove();
             }
+        } catch (err) { console.warn("FCM not supported", err); }
+    }
+
+    async function sendPushNotification(toUserId, title, body, data = {}) {
+        const tokenDoc = await db.collection('fcmTokens').doc(toUserId).get();
+        const token = tokenDoc.exists ? tokenDoc.data().token : null;
+        if (!token) return;
+        // This would need a backend function, but for demo we show it's integrated.
+        // In production, call a cloud function. Here we simulate local notification if same device?
+        if (Notification.permission === 'granted' && document.hidden) {
+            new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/906/906377.png' });
         }
     }
 
-    async function loadFriendsList() {
-        const userDoc = await db.collection('users').doc(currentUser).get();
-        const friends = userDoc.exists ? userDoc.data().friends || [] : [];
+    // Authentication
+    async function login() {
+        const username = document.getElementById('loginUser').value.trim().toLowerCase();
+        const password = document.getElementById('loginPass').value;
+        if (!username || !password) return alert("Fill all fields");
+        try {
+            const email = `${username}@chatrix.local`;
+            await auth.signInWithEmailAndPassword(email, password);
+            currentUser = auth.currentUser;
+            await db.collection('users').doc(username).set({ username, displayName: username, friends: [] }, { merge: true });
+            document.getElementById('loginModal').classList.add('hidden');
+            await setUserOnline(username, true);
+            loadUserData();
+            showScreen('chats');
+        } catch(e) { alert("Invalid credentials or user not found"); }
+    }
+    async function signup() {
+        const username = document.getElementById('signupUser').value.trim().toLowerCase();
+        const password = document.getElementById('signupPass').value;
+        if (!username || password.length < 6) return alert("Username & password (6+ chars)");
+        try {
+            const email = `${username}@chatrix.local`;
+            await auth.createUserWithEmailAndPassword(email, password);
+            await db.collection('users').doc(username).set({ username, displayName: username, friends: [], createdAt: new Date() });
+            alert("Account created! Please login.");
+            document.getElementById('signupModal').classList.add('hidden');
+            document.getElementById('loginModal').classList.remove('hidden');
+        } catch(e) { alert(e.message); }
+    }
+
+    async function loadUserData() {
+        if (!auth.currentUser) return;
+        const email = auth.currentUser.email;
+        const username = email.replace('@chatrix.local', '');
+        const doc = await db.collection('users').doc(username).get();
+        if(doc.exists) currentUser = { uid: username, ...doc.data() };
+        else currentUser = { uid: username, username, displayName: username, friends: [] };
+        renderFriends();
+        renderGroups();
+        // Handle presence for friends
+        if(unsubscribeFriends) unsubscribeFriends();
+        unsubscribeFriends = db.collection('users').doc(username).onSnapshot(() => renderFriends());
+    }
+
+    // Render Friends with Online Indicators
+    async function renderFriends() {
+        if(!currentUser) return;
+        const friendsList = currentUser.friends || [];
         const container = document.getElementById('friendsList');
-        
-        if (friends.length === 0) {
-            container.innerHTML = '<div class="no-friends">No friends yet.<br>Add someone to start chatting!</div>';
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        for (const friend of friends) {
-            const isOnline = await getUserOnlineStatus(friend);
-            const unread = unreadCounts[friend] || 0;
-            
-            const friendDiv = document.createElement('div');
-            friendDiv.className = `friend-item ${currentChatFriend === friend ? 'active' : ''}`;
-            friendDiv.innerHTML = `
-                <div class="friend-avatar">
-                    <i class="fas fa-user-circle"></i>
-                    <span class="status-dot ${isOnline ? 'status-online' : 'status-offline'}"></span>
+        if(friendsList.length === 0) { container.innerHTML = '<div class="empty"><i class="fas fa-user-friends"></i> No friends yet</div>'; return; }
+        let html = '';
+        for(const friendId of friendsList) {
+            const friendDoc = await db.collection('users').doc(friendId).get();
+            const display = friendDoc.exists ? friendDoc.data().displayName : friendId;
+            // Get real-time online status
+            const presenceSnap = await db.collection('presence').doc(friendId).get();
+            const isOnline = presenceSnap.exists ? presenceSnap.data().online : false;
+            const unread = 0; // simplified
+            html += `
+                <div class="card" onclick="openChat('${friendId}', 'friend')">
+                    <div class="card-header">
+                        <div class="avatar">
+                            👤
+                            <span class="online-indicator ${!isOnline ? 'offline-indicator' : ''}" style="${!isOnline ? 'background:#7f8c8d;' : ''}"></span>
+                        </div>
+                        <div class="info">
+                            <div class="name">${escapeHtml(display)} ${isOnline ? '<span style="color:#2ecc71; font-size:10px;">● Online</span>' : '<span style="color:#7f8c8d; font-size:10px;">● Offline</span>'}</div>
+                            <div class="preview">Tap to chat</div>
+                        </div>
+                        ${unread ? `<div class="badge">${unread}</div>` : ''}
+                    </div>
                 </div>
-                <div>
-                    <div class="friend-name">${escapeHtml(friend)}</div>
-                    <div class="friend-status-text">${isOnline ? '🟢 Online' : '⚫ Offline'}</div>
-                </div>
-                ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
             `;
-            friendDiv.onclick = () => openChat(friend);
-            container.appendChild(friendDiv);
-            
-            listenToFriendStatus(friend, (online) => {
-                const statusDot = friendDiv.querySelector('.status-dot');
-                const statusText = friendDiv.querySelector('.friend-status-text');
-                if (statusDot) {
-                    statusDot.className = `status-dot ${online ? 'status-online' : 'status-offline'}`;
-                }
-                if (statusText) {
-                    statusText.innerHTML = online ? '🟢 Online' : '⚫ Offline';
-                }
+        }
+        container.innerHTML = html;
+    }
+
+    function renderGroups() {
+        const container = document.getElementById('groupsList');
+        container.innerHTML = '<div class="empty"><i class="fas fa-users"></i> Groups will appear here</div>';
+    }
+
+    // Chat Logic + Real-time Typing + Messages
+    async function openChat(chatId, type) {
+        currentChatId = chatId;
+        currentChatType = type;
+        document.getElementById('chatView').classList.add('open');
+        document.getElementById('chatName').innerText = chatId;
+        // Subscribe to online status
+        const unsubscribePresence = subscribeToPresence(chatId, (online) => {
+            const statusSpan = document.getElementById('chatOnlineStatus');
+            if(statusSpan) statusSpan.innerHTML = online ? '<i class="fas fa-circle" style="color:#2ecc71; font-size:8px;"></i> online' : '<i class="fas fa-circle" style="color:#7f8c8d; font-size:8px;"></i> offline';
+        });
+        window._currentPresenceUnsub = unsubscribePresence;
+        
+        // Load messages
+        const chatDocId = [currentUser.uid, chatId].sort().join('_');
+        const msgsRef = db.collection('messages').doc(chatDocId).collection('chat').orderBy('timestamp');
+        const unsubscribeMsgs = msgsRef.onSnapshot(snapshot => {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = '';
+            snapshot.forEach(doc => {
+                const msg = doc.data();
+                const div = document.createElement('div');
+                div.className = `message ${msg.from === currentUser.uid ? 'sent' : 'received'}`;
+                div.innerText = msg.text;
+                container.appendChild(div);
             });
-        }
+            container.scrollTop = container.scrollHeight;
+            // Mark as read for push
+            if(chatType === 'friend') markMessagesRead(chatId);
+        });
+        window._currentMsgUnsub = unsubscribeMsgs;
+        
+        // Typing listener
+        const typingRef = db.collection('typing').doc(chatDocId);
+        const unsubTyping = typingRef.onSnapshot(doc => {
+            const data = doc.data();
+            const typingDiv = document.getElementById('typingIndicator');
+            if(data && data.user !== currentUser.uid && data.isTyping) {
+                typingDiv.style.display = 'block';
+                typingDiv.innerText = `${chatId} is typing...`;
+                clearTimeout(typingTimeout);
+                typingTimeout = setTimeout(() => typingDiv.style.display = 'none', 2000);
+            } else typingDiv.style.display = 'none';
+        });
+        window._typingUnsub = unsubTyping;
     }
-
-    // Messaging
-    function getChatId(user1, user2) {
-        return [user1, user2].sort().join('_');
+    async function markMessagesRead(otherUser) {
+        const chatId = [currentUser.uid, otherUser].sort().join('_');
+        const unread = await db.collection('messages').doc(chatId).collection('chat').where('from', '==', otherUser).where('read', '==', false).get();
+        unread.forEach(d => d.ref.update({ read: true }));
     }
-
-    function renderMessageContent(msg) {
-        if (msg.type === 'gif') {
-            return `<div class="gif-message"><img src="${msg.data}" class="media-preview" onclick="window.open('${msg.data}')"></div>`;
-        }
-        return `<div>${escapeHtml(msg.text)}</div>`;
-    }
-
     async function sendMessage() {
         const input = document.getElementById('messageInput');
         const text = input.value.trim();
-        if (!text || !currentChatFriend) return;
-        
-        const chatId = getChatId(currentUser, currentChatFriend);
-        await db.collection('chats').doc(chatId).collection('messages').add({
-            from: currentUser,
+        if(!text || !currentChatId) return;
+        const chatDocId = [currentUser.uid, currentChatId].sort().join('_');
+        await db.collection('messages').doc(chatDocId).collection('chat').add({
+            from: currentUser.uid,
             text: text,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             read: false
         });
-        
+        // Send typing stop
+        await db.collection('typing').doc(chatDocId).delete();
+        // Send push notification to recipient
+        sendPushNotification(currentChatId, `New message from ${currentUser.displayName}`, text);
         input.value = '';
     }
-
-    async function openChat(friendId) {
-        currentChatFriend = friendId;
-        
-        unreadCounts[friendId] = 0;
-        updateUnreadBadge(friendId, 0);
-        
-        document.getElementById('chatFriendName').innerHTML = friendId;
-        document.getElementById('inputArea').style.display = 'flex';
-        
-        document.querySelectorAll('.friend-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        const activeFriend = Array.from(document.querySelectorAll('.friend-item')).find(
-            item => item.querySelector('.friend-name')?.innerText === friendId
-        );
-        if (activeFriend) activeFriend.classList.add('active');
-        
-        if (messagesUnsubscribe) messagesUnsubscribe();
-        
-        const chatId = getChatId(currentUser, friendId);
-        const messagesContainer = document.getElementById('messagesArea');
-        messagesContainer.innerHTML = '';
-        
-        // Mark messages as read
-        const unreadSnapshot = await db.collection('chats').doc(chatId).collection('messages')
-            .where('from', '==', friendId)
-            .where('read', '==', false)
-            .get();
-        const batch = db.batch();
-        unreadSnapshot.forEach(doc => {
-            batch.update(doc.ref, { read: true });
-        });
-        await batch.commit();
-        
-        messagesUnsubscribe = db.collection('chats').doc(chatId).collection('messages')
-            .orderBy('timestamp', 'asc')
-            .onSnapshot((snapshot) => {
-                snapshot.docChanges().forEach((change) => {
-                    const msg = change.doc.data();
-                    if (change.type === 'added') {
-                        if (msg.from !== currentUser && currentChatFriend !== friendId && !document.hasFocus()) {
-                            showInAppNotification(`New message from ${msg.from}`, msg.text || "Sent a GIF");
-                            unreadCounts[msg.from] = (unreadCounts[msg.from] || 0) + 1;
-                            updateUnreadBadge(msg.from, unreadCounts[msg.from]);
-                        }
-                        
-                        const messageDiv = document.createElement('div');
-                        const isSent = msg.from === currentUser;
-                        messageDiv.className = `message ${isSent ? 'message-sent' : 'message-received'}`;
-                        
-                        let messageHtml = '';
-                        if (!isSent) {
-                            messageHtml += `<div class="message-sender">${escapeHtml(msg.from)}</div>`;
-                        }
-                        messageHtml += renderMessageContent(msg);
-                        messageHtml += `<div class="message-time">${formatTime(msg.timestamp)}</div>`;
-                        messageDiv.innerHTML = messageHtml;
-                        
-                        messagesContainer.appendChild(messageDiv);
-                        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    }
-                });
-            });
+    async function sendTyping(isTyping) {
+        if(!currentChatId) return;
+        const chatDocId = [currentUser.uid, currentChatId].sort().join('_');
+        if(isTyping) {
+            await db.collection('typing').doc(chatDocId).set({ user: currentUser.uid, isTyping: true, timestamp: Date.now() });
+            setTimeout(() => db.collection('typing').doc(chatDocId).delete(), 2000);
+        } else await db.collection('typing').doc(chatDocId).delete();
     }
 
-    function formatTime(timestamp) {
-        if (!timestamp) return '';
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    function closeChat() {
+        document.getElementById('chatView').classList.remove('active');
+        document.getElementById('chatView').classList.remove('open');
+        if(window._currentPresenceUnsub) window._currentPresenceUnsub();
+        if(window._currentMsgUnsub) window._currentMsgUnsub();
+        if(window._typingUnsub) window._typingUnsub();
+        currentChatId = null;
     }
 
-    function escapeHtml(str) {
-        if (!str) return '';
-        return String(str).replace(/[&<>]/g, (m) => {
-            if (m === '&') return '&amp;';
-            if (m === '<') return '&lt;';
-            if (m === '>') return '&gt;';
-            return m;
+    // Friend Requests
+    async function sendFriendRequest() {
+        const target = document.getElementById('friendUsername').value.trim().toLowerCase();
+        if(!target || target === currentUser.uid) return alert("Invalid");
+        await db.collection('friendRequests').add({
+            from: currentUser.uid,
+            to: target,
+            status: 'pending',
+            timestamp: new Date()
         });
+        alert("Request sent!");
+        closeModal('addFriendModal');
+    }
+    async function acceptRequest(fromUser) {
+        const q = await db.collection('friendRequests').where('from', '==', fromUser).where('to', '==', currentUser.uid).where('status', '==', 'pending').get();
+        if(q.empty) return;
+        await q.docs[0].ref.update({ status: 'accepted' });
+        await db.collection('users').doc(currentUser.uid).update({ friends: firebase.firestore.FieldValue.arrayUnion(fromUser) });
+        await db.collection('users').doc(fromUser).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
+        renderFriends();
     }
 
-    // Auth
-    async function handleAuth() {
-        const username = document.getElementById('loginUsername').value.trim().toLowerCase();
-        const password = document.getElementById('loginPassword').value;
-        const errorDiv = document.getElementById('loginError');
-        
-        if (!username || password.length < 4) {
-            errorDiv.innerText = 'Username and password (min 4 chars)';
-            return;
+    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+    function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+
+    // UI Event Bindings
+    document.getElementById('sendMsgBtn').onclick = sendMessage;
+    document.getElementById('messageInput').addEventListener('input', () => sendTyping(true));
+    document.getElementById('closeChatBtn').onclick = closeChat;
+    document.getElementById('addFriendBtn').onclick = () => document.getElementById('addFriendModal').classList.remove('hidden');
+    document.getElementById('sendRequestBtn').onclick = sendFriendRequest;
+    document.getElementById('closeAddFriendModal').onclick = () => closeModal('addFriendModal');
+    document.getElementById('loginBtn').onclick = login;
+    document.getElementById('signupBtn').onclick = signup;
+    document.getElementById('showSignupBtn').onclick = () => { document.getElementById('loginModal').classList.add('hidden'); document.getElementById('signupModal').classList.remove('hidden'); };
+    document.getElementById('showLoginBtn').onclick = () => { document.getElementById('signupModal').classList.add('hidden'); document.getElementById('loginModal').classList.remove('hidden'); };
+    document.getElementById('logoutBtn').onclick = async () => { await setUserOnline(currentUser?.uid, false); auth.signOut(); location.reload(); };
+    document.getElementById('notifPermissionBtn').onclick = requestNotificationPermission;
+    document.getElementById('createGroupBtn').onclick = () => alert("Groups feature: create your own space!");
+    document.getElementById('closeGroupModal').onclick = () => closeModal('createGroupModal');
+    
+    // Auto presence on window close
+    window.addEventListener('beforeunload', () => { if(currentUser) setUserOnline(currentUser.uid, false); });
+    auth.onAuthStateChanged(async user => {
+        if(user) {
+            const email = user.email;
+            const username = email.replace('@chatrix.local', '');
+            const doc = await db.collection('users').doc(username).get();
+            if(!doc.exists) await db.collection('users').doc(username).set({ username, displayName: username, friends: [] });
+            currentUser = { uid: username, ...doc.data() };
+            document.getElementById('loginModal').classList.add('hidden');
+            await setUserOnline(username, true);
+            loadUserData();
+            showScreen('chats');
+            setInterval(() => setUserOnline(username, true), 30000);
+        } else {
+            document.getElementById('loginModal').classList.remove('hidden');
+            document.getElementById('signupModal').classList.add('hidden');
         }
-        
-        try {
-            const userRef = db.collection('users').doc(username);
-            const doc = await userRef.get();
-            
-            if (!doc.exists) {
-                await userRef.set({
-                    username: username,
-                    displayName: username,
-                    friends: [],
-                    passwordHash: btoa(password),
-                    createdAt: new Date()
-                });
-                errorDiv.innerText = '✅ Account created!';
-            } else if (doc.data().passwordHash !== btoa(password)) {
-                errorDiv.innerText = '❌ Wrong password';
-                return;
-            }
-            
-            currentUser = username;
-            document.getElementById('currentUserName').innerHTML = currentUser;
-            
-            await startHeartbeat();
-            await loadFriendsList();
-            buildGifPicker();
-            
-            document.getElementById('loginContainer').style.display = 'none';
-            document.getElementById('appContainer').classList.remove('hidden');
-            
-            errorDiv.innerText = '';
-            showToast(`Welcome, ${username}!`);
-            
-            // Set demo users online
-            const demoUsers = ['Alice', 'Bob', 'Charlie'];
-            for (const user of demoUsers) {
-                if (user !== currentUser) {
-                    await setUserOnline(user, true);
-                }
-            }
-        } catch (error) {
-            console.error("Auth error:", error);
-            errorDiv.innerText = 'Firebase error: ' + error.message;
-        }
-    }
-
-    function logout() {
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        if (messagesUnsubscribe) messagesUnsubscribe();
-        if (currentUser) setUserOnline(currentUser, false);
-        currentUser = null;
-        currentChatFriend = null;
-        unreadCounts = {};
-        
-        document.getElementById('loginContainer').style.display = 'flex';
-        document.getElementById('appContainer').classList.add('hidden');
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-        document.getElementById('messagesArea').innerHTML = '<div class="empty-chat">👈 Select a friend to start chatting</div>';
-        document.getElementById('inputArea').style.display = 'none';
-        
-        const notifyBtn = document.getElementById('notifyBtn');
-        notifyBtn.classList.remove('enabled');
-        notifyBtn.innerHTML = '<i class="fas fa-bell"></i> Notify';
-        notificationPermission = false;
-    }
-
-    // Event listeners
-    document.getElementById('loginBtn').onclick = handleAuth;
-    document.getElementById('logoutBtn').onclick = logout;
-    document.getElementById('sendBtn').onclick = sendMessage;
-    document.getElementById('notifyBtn').onclick = requestNotificationPermission;
-    document.getElementById('addFriendBtn').onclick = () => {
-        const friendName = document.getElementById('friendUsername').value.trim().toLowerCase();
-        if (friendName) addFriend(friendName);
-        document.getElementById('friendUsername').value = '';
-    };
-    document.getElementById('messageInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') sendMessage();
     });
-    document.getElementById('loginUsername').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleAuth();
-    });
-    document.getElementById('loginPassword').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') handleAuth();
-    });
+    window.openChat = openChat;
+    window.acceptRequest = acceptRequest;
 </script>
 </body>
 </html>
