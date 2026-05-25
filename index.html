@@ -3,14 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix Cloud | Real-time Online & Notifications</title>
-    <!-- Font Awesome -->
+    <title>Chatrix Cloud | Friend System & Online Status</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-messaging-compat.js"></script>
     <style>
         * {
             margin: 0;
@@ -28,7 +25,6 @@
             padding: 20px;
         }
 
-        /* Phone container */
         .phone {
             width: 380px;
             height: 700px;
@@ -40,7 +36,6 @@
             border: 1px solid rgba(0, 212, 255, 0.2);
         }
 
-        /* Status Bar */
         .status-bar {
             background: #0f0f1a;
             padding: 12px 20px 6px;
@@ -51,7 +46,6 @@
             border-bottom: 1px solid #1f1f2e;
         }
 
-        /* Tabs */
         .tabs {
             display: flex;
             background: #0f0f1a;
@@ -82,7 +76,6 @@
             margin-left: 5px;
         }
 
-        /* Screens */
         .screen {
             height: calc(100% - 50px);
             overflow-y: auto;
@@ -92,7 +85,6 @@
         }
         .screen.active { display: block; }
 
-        /* Cards */
         .card {
             background: #16162a;
             border-radius: 20px;
@@ -163,15 +155,26 @@
             border-radius: 20px;
             cursor: pointer;
             font-size: 12px;
+            transition: 0.2s;
         }
+        button:hover { background: rgba(0, 212, 255, 0.4); }
         .add-btn {
             background: #00d4ff;
             color: #0f0f1a;
             width: 100%;
             margin-bottom: 12px;
             font-weight: bold;
+            border: none;
         }
-        /* Chat View */
+        .add-btn:hover { background: #00e4ff; }
+        .request-card {
+            background: #1e1e35;
+            border-left: 3px solid #00d4ff;
+        }
+        .request-actions { display: flex; gap: 8px; margin-top: 8px; }
+        .accept-btn { background: #2ecc71; color: white; border: none; }
+        .reject-btn { background: #e74c3c; color: white; border: none; }
+        
         .chat-view {
             position: absolute;
             top: 0;
@@ -237,7 +240,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background: rgba(0,0,0,0.95);
             z-index: 100;
             display: flex;
             align-items: center;
@@ -250,19 +253,13 @@
             width: 85%;
             border: 1px solid #00d4ff;
         }
-        .modal-card input { width: 100%; padding: 12px; margin: 8px 0; background: #252540; border: none; border-radius: 30px; color: white; }
-        .modal-card button { margin-top: 12px; }
+        .modal-card h3, .modal-card h2 { color: white; margin-bottom: 16px; }
+        .modal-card input { width: 100%; padding: 12px; margin: 8px 0; background: #252540; border: none; border-radius: 30px; color: white; outline: none; }
+        .modal-card button { margin-top: 12px; width: 100%; }
         .hidden { display: none; }
         .empty { text-align: center; color: #6c6c7a; padding: 40px; }
         .typing { font-size: 11px; color: #00d4ff; margin-top: 4px; font-style: italic; }
-        .notification-prompt {
-            background: #00d4ff20;
-            border-radius: 16px;
-            padding: 10px;
-            margin-bottom: 12px;
-            text-align: center;
-            font-size: 12px;
-        }
+        .section-title { color: #00d4ff; font-size: 14px; margin: 16px 0 8px 0; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -272,7 +269,6 @@
         <span><i class="fas fa-signal"></i> <i class="fas fa-battery-full"></i></span>
     </div>
 
-    <!-- Tabs -->
     <div class="tabs">
         <div class="tab active" data-tab="chats"><i class="fas fa-comment"></i><span>Chats</span><span id="chatsBadge" class="tab-badge hidden">0</span></div>
         <div class="tab" data-tab="groups"><i class="fas fa-users"></i><span>Groups</span></div>
@@ -283,18 +279,20 @@
     <div id="chatsScreen" class="screen active">
         <div class="header">
             <div class="logo"><i class="fas fa-cloud"></i> Chatrix Cloud</div>
-            <button id="notifPermissionBtn"><i class="fas fa-bell"></i> Enable Alerts</button>
+            <button id="refreshBtn"><i class="fas fa-sync-alt"></i></button>
         </div>
         <button class="add-btn" id="addFriendBtn"><i class="fas fa-user-plus"></i> Add Friend</button>
+        
+        <div id="pendingRequestsSection"></div>
+        <div class="section-title"><i class="fas fa-users"></i> Your Friends</div>
         <div id="friendsList"></div>
-        <div id="requestsSection"></div>
     </div>
 
-    <!-- Groups Screen (simplified but functional) -->
+    <!-- Groups Screen -->
     <div id="groupsScreen" class="screen">
         <div class="header"><div class="logo"><i class="fas fa-users"></i> Groups</div></div>
-        <button class="add-btn" id="createGroupBtn"><i class="fas fa-plus"></i> New Group</button>
-        <div id="groupsList"></div>
+        <button class="add-btn" id="createGroupBtn"><i class="fas fa-plus"></i> Create Group</button>
+        <div id="groupsList"><div class="empty">No groups yet. Create one!</div></div>
     </div>
 
     <!-- Profile Screen -->
@@ -303,10 +301,10 @@
         <div class="card" id="profileCard">
             <div class="card-header">
                 <div class="avatar" id="profileAvatar">👤</div>
-                <div class="info"><div class="name" id="profileName">Loading...</div><div class="preview">Tap to edit</div></div>
+                <div class="info"><div class="name" id="profileName">Loading...</div><div class="preview">Your username</div></div>
             </div>
         </div>
-        <button id="logoutBtn" style="background:#ff3b3020; border-color:#ff3b30; color:#ff3b30; width:100%; margin-top:12px;">Logout</button>
+        <button id="logoutBtn" style="background:#ff3b3020; border-color:#ff3b30; color:#ff3b30; width:100%; margin-top:12px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
     </div>
 
     <!-- Chat View -->
@@ -319,24 +317,46 @@
         </div>
         <div id="chatMessages" class="chat-messages"></div>
         <div class="chat-input-area">
-            <input type="text" id="messageInput" placeholder="Message...">
+            <input type="text" id="messageInput" placeholder="Type a message...">
             <button id="sendMsgBtn"><i class="fas fa-paper-plane"></i></button>
         </div>
-        <div id="typingIndicator" class="typing" style="padding-left: 16px; display: none;">Someone is typing...</div>
+        <div id="typingIndicator" class="typing" style="padding-left: 16px; display: none;">someone is typing...</div>
     </div>
 
     <!-- Modals -->
     <div id="addFriendModal" class="modal hidden">
-        <div class="modal-card"><h3 style="color:white;">Add Friend</h3><input id="friendUsername" placeholder="Username"><button id="sendRequestBtn">Send Request</button><button id="closeAddFriendModal">Cancel</button></div>
+        <div class="modal-card">
+            <h3><i class="fas fa-user-plus"></i> Add Friend</h3>
+            <input id="friendUsername" placeholder="Enter username">
+            <button id="sendRequestBtn">Send Friend Request</button>
+            <button id="closeAddFriendModal" style="background:#333;">Cancel</button>
+        </div>
     </div>
     <div id="createGroupModal" class="modal hidden">
-        <div class="modal-card"><h3 style="color:white;">Create Group</h3><input id="groupName" placeholder="Group Name"><button id="createGroupSubmit">Create</button><button id="closeGroupModal">Cancel</button></div>
+        <div class="modal-card">
+            <h3>Create Group</h3>
+            <input id="groupName" placeholder="Group Name">
+            <button id="createGroupSubmit">Create</button>
+            <button id="closeGroupModal" style="background:#333;">Cancel</button>
+        </div>
     </div>
     <div id="loginModal" class="modal">
-        <div class="modal-card"><h2 style="color:white;">✨ Chatrix</h2><input id="loginUser" placeholder="Username"><input id="loginPass" type="password" placeholder="Password"><button id="loginBtn">Login</button><button id="showSignupBtn">Sign Up</button></div>
+        <div class="modal-card">
+            <h2>✨ Chatrix</h2>
+            <input id="loginUser" placeholder="Username">
+            <input id="loginPass" type="password" placeholder="Password">
+            <button id="loginBtn">Login</button>
+            <button id="showSignupBtn" style="background:#333;">Sign Up</button>
+        </div>
     </div>
     <div id="signupModal" class="modal hidden">
-        <div class="modal-card"><h2 style="color:white;">Sign Up</h2><input id="signupUser" placeholder="Username"><input id="signupPass" type="password" placeholder="Password"><button id="signupBtn">Create Account</button><button id="showLoginBtn">Back to Login</button></div>
+        <div class="modal-card">
+            <h2>Create Account</h2>
+            <input id="signupUser" placeholder="Username">
+            <input id="signupPass" type="password" placeholder="Password (min 6 chars)">
+            <button id="signupBtn">Sign Up</button>
+            <button id="showLoginBtn" style="background:#333;">Back to Login</button>
+        </div>
     </div>
 </div>
 
@@ -353,17 +373,14 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     const auth = firebase.auth();
-    const messaging = firebase.messaging();
 
     let currentUser = null;
     let currentChatId = null;
     let currentChatType = 'friend';
-    let unsubscribeFriends = null;
-    let onlineStatusInterval = null;
+    let friendsUnsubscribe = null;
+    let requestsUnsubscribe = null;
     let typingTimeout = null;
-
-    // VAPID Key (replace with your own from Firebase Console)
-    const VAPID_KEY = "BLeh2L2_tqA6mZqJqR4PkK7VYxWzL9xQ3mN5pO7rS9tU1vW3xY5zA7bC9dE1fG3hI5jK7lM9nO";
+    let presenceUnsubscribes = {};
 
     // Helper Functions
     function showScreen(screen) {
@@ -376,7 +393,12 @@
     }
     window.showScreen = showScreen;
 
-    // Real-time Online Presence System
+    function escapeHtml(str) { 
+        if (!str) return '';
+        return String(str).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); 
+    }
+
+    // Online Presence System
     async function setUserOnline(userId, isOnline) {
         if (!userId) return;
         await db.collection('presence').doc(userId).set({
@@ -386,107 +408,83 @@
     }
 
     function subscribeToPresence(userId, callback) {
-        return db.collection('presence').doc(userId).onSnapshot(doc => {
+        if (presenceUnsubscribes[userId]) presenceUnsubscribes[userId]();
+        const unsub = db.collection('presence').doc(userId).onSnapshot(doc => {
             const data = doc.data();
             callback(data ? data.online : false);
         });
-    }
-
-    // Cross-device Notifications via FCM
-    async function requestNotificationPermission() {
-        try {
-            const permission = await Notification.requestPermission();
-            if (permission === 'granted') {
-                const token = await messaging.getToken({ vapidKey: VAPID_KEY });
-                if (token && currentUser) {
-                    await db.collection('fcmTokens').doc(currentUser.uid).set({ token, userId: currentUser.uid }, { merge: true });
-                    alert('Notifications enabled on this device!');
-                }
-            }
-        } catch (err) { console.warn("FCM not supported", err); }
-    }
-
-    async function sendPushNotification(toUserId, title, body, data = {}) {
-        const tokenDoc = await db.collection('fcmTokens').doc(toUserId).get();
-        const token = tokenDoc.exists ? tokenDoc.data().token : null;
-        if (!token) return;
-        // This would need a backend function, but for demo we show it's integrated.
-        // In production, call a cloud function. Here we simulate local notification if same device?
-        if (Notification.permission === 'granted' && document.hidden) {
-            new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/906/906377.png' });
-        }
+        presenceUnsubscribes[userId] = unsub;
+        return unsub;
     }
 
     // Authentication
     async function login() {
         const username = document.getElementById('loginUser').value.trim().toLowerCase();
         const password = document.getElementById('loginPass').value;
-        if (!username || !password) return alert("Fill all fields");
+        if (!username || !password) return alert("Please enter username and password");
         try {
             const email = `${username}@chatrix.local`;
             await auth.signInWithEmailAndPassword(email, password);
-            currentUser = auth.currentUser;
-            await db.collection('users').doc(username).set({ username, displayName: username, friends: [] }, { merge: true });
-            document.getElementById('loginModal').classList.add('hidden');
-            await setUserOnline(username, true);
-            loadUserData();
-            showScreen('chats');
-        } catch(e) { alert("Invalid credentials or user not found"); }
+        } catch(e) { 
+            alert("Invalid credentials. Please sign up first."); 
+        }
     }
+
     async function signup() {
         const username = document.getElementById('signupUser').value.trim().toLowerCase();
         const password = document.getElementById('signupPass').value;
-        if (!username || password.length < 6) return alert("Username & password (6+ chars)");
+        if (!username || password.length < 6) return alert("Username and password (min 6 chars) required");
         try {
             const email = `${username}@chatrix.local`;
             await auth.createUserWithEmailAndPassword(email, password);
-            await db.collection('users').doc(username).set({ username, displayName: username, friends: [], createdAt: new Date() });
+            // Create user document
+            await db.collection('users').doc(username).set({
+                username: username,
+                displayName: username,
+                friends: [],
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
             alert("Account created! Please login.");
             document.getElementById('signupModal').classList.add('hidden');
             document.getElementById('loginModal').classList.remove('hidden');
-        } catch(e) { alert(e.message); }
+        } catch(e) { 
+            alert(e.message); 
+        }
     }
 
-    async function loadUserData() {
-        if (!auth.currentUser) return;
-        const email = auth.currentUser.email;
-        const username = email.replace('@chatrix.local', '');
-        const doc = await db.collection('users').doc(username).get();
-        if(doc.exists) currentUser = { uid: username, ...doc.data() };
-        else currentUser = { uid: username, username, displayName: username, friends: [] };
-        renderFriends();
-        renderGroups();
-        // Handle presence for friends
-        if(unsubscribeFriends) unsubscribeFriends();
-        unsubscribeFriends = db.collection('users').doc(username).onSnapshot(() => renderFriends());
-    }
-
-    // Render Friends with Online Indicators
+    // Friend System - Render Friends with Online Status
     async function renderFriends() {
-        if(!currentUser) return;
+        if (!currentUser) return;
+        
         const friendsList = currentUser.friends || [];
         const container = document.getElementById('friendsList');
-        if(friendsList.length === 0) { container.innerHTML = '<div class="empty"><i class="fas fa-user-friends"></i> No friends yet</div>'; return; }
+        
+        if (friendsList.length === 0) {
+            container.innerHTML = '<div class="empty"><i class="fas fa-user-friends"></i> No friends yet. Add some!</div>';
+            return;
+        }
+        
         let html = '';
-        for(const friendId of friendsList) {
+        for (const friendId of friendsList) {
+            // Get friend's user data
             const friendDoc = await db.collection('users').doc(friendId).get();
-            const display = friendDoc.exists ? friendDoc.data().displayName : friendId;
-            // Get real-time online status
+            const displayName = friendDoc.exists ? friendDoc.data().displayName : friendId;
+            
+            // Get online status
             const presenceSnap = await db.collection('presence').doc(friendId).get();
             const isOnline = presenceSnap.exists ? presenceSnap.data().online : false;
-            const unread = 0; // simplified
+            
             html += `
-                <div class="card" onclick="openChat('${friendId}', 'friend')">
+                <div class="card" onclick="openChat('${escapeHtml(friendId)}', 'friend')">
                     <div class="card-header">
                         <div class="avatar">
                             👤
                             <span class="online-indicator ${!isOnline ? 'offline-indicator' : ''}" style="${!isOnline ? 'background:#7f8c8d;' : ''}"></span>
                         </div>
                         <div class="info">
-                            <div class="name">${escapeHtml(display)} ${isOnline ? '<span style="color:#2ecc71; font-size:10px;">● Online</span>' : '<span style="color:#7f8c8d; font-size:10px;">● Offline</span>'}</div>
-                            <div class="preview">Tap to chat</div>
+                            <div class="name">${escapeHtml(displayName)} ${isOnline ? '<span style="color:#2ecc71; font-size:10px;">● Online</span>' : '<span style="color:#7f8c8d; font-size:10px;">● Offline</span>'}</div>
+                            <div class="preview">@${escapeHtml(friendId)}</div>
                         </div>
-                        ${unread ? `<div class="badge">${unread}</div>` : ''}
                     </div>
                 </div>
             `;
@@ -494,159 +492,392 @@
         container.innerHTML = html;
     }
 
-    function renderGroups() {
-        const container = document.getElementById('groupsList');
-        container.innerHTML = '<div class="empty"><i class="fas fa-users"></i> Groups will appear here</div>';
+    // Render Pending Friend Requests
+    async function renderPendingRequests() {
+        if (!currentUser) return;
+        
+        const requestsSnap = await db.collection('friendRequests')
+            .where('to', '==', currentUser.username)
+            .where('status', '==', 'pending')
+            .get();
+        
+        const container = document.getElementById('pendingRequestsSection');
+        
+        if (requestsSnap.empty) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let html = '<div class="section-title"><i class="fas fa-envelope"></i> Friend Requests</div>';
+        
+        for (const doc of requestsSnap.docs) {
+            const req = doc.data();
+            const fromUser = req.from;
+            const fromDoc = await db.collection('users').doc(fromUser).get();
+            const displayName = fromDoc.exists ? fromDoc.data().displayName : fromUser;
+            
+            html += `
+                <div class="card request-card">
+                    <div class="card-header">
+                        <div class="avatar">👤</div>
+                        <div class="info">
+                            <div class="name">${escapeHtml(displayName)}</div>
+                            <div class="preview">@${escapeHtml(fromUser)} wants to be friends</div>
+                        </div>
+                    </div>
+                    <div class="request-actions">
+                        <button class="accept-btn" onclick="acceptRequest('${escapeHtml(fromUser)}')"><i class="fas fa-check"></i> Accept</button>
+                        <button class="reject-btn" onclick="rejectRequest('${escapeHtml(fromUser)}')"><i class="fas fa-times"></i> Decline</button>
+                    </div>
+                </div>
+            `;
+        }
+        container.innerHTML = html;
     }
 
-    // Chat Logic + Real-time Typing + Messages
+    // Send Friend Request
+    async function sendFriendRequest() {
+        const targetUsername = document.getElementById('friendUsername').value.trim().toLowerCase();
+        
+        if (!targetUsername) {
+            alert("Please enter a username");
+            return;
+        }
+        
+        if (targetUsername === currentUser.username) {
+            alert("You cannot add yourself as a friend");
+            return;
+        }
+        
+        // Check if user exists
+        const targetUser = await db.collection('users').doc(targetUsername).get();
+        if (!targetUser.exists) {
+            alert("User not found");
+            return;
+        }
+        
+        // Check if already friends
+        if (currentUser.friends && currentUser.friends.includes(targetUsername)) {
+            alert("You are already friends with this user");
+            return;
+        }
+        
+        // Check if request already sent
+        const existingRequest = await db.collection('friendRequests')
+            .where('from', '==', currentUser.username)
+            .where('to', '==', targetUsername)
+            .where('status', '==', 'pending')
+            .get();
+        
+        if (!existingRequest.empty) {
+            alert("Friend request already sent");
+            return;
+        }
+        
+        // Check for incoming pending request
+        const incomingRequest = await db.collection('friendRequests')
+            .where('from', '==', targetUsername)
+            .where('to', '==', currentUser.username)
+            .where('status', '==', 'pending')
+            .get();
+        
+        if (!incomingRequest.empty) {
+            alert("This user already sent you a request. Accept it instead.");
+            return;
+        }
+        
+        try {
+            await db.collection('friendRequests').add({
+                from: currentUser.username,
+                to: targetUsername,
+                status: 'pending',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            alert(`Friend request sent to ${targetUsername}!`);
+            document.getElementById('friendUsername').value = '';
+            closeModal('addFriendModal');
+        } catch (error) {
+            console.error("Error sending request:", error);
+            alert("Failed to send friend request");
+        }
+    }
+
+    // Accept Friend Request
+    window.acceptRequest = async function(fromUser) {
+        try {
+            // Update the request status
+            const requestsSnap = await db.collection('friendRequests')
+                .where('from', '==', fromUser)
+                .where('to', '==', currentUser.username)
+                .where('status', '==', 'pending')
+                .get();
+            
+            if (requestsSnap.empty) {
+                alert("Request not found");
+                return;
+            }
+            
+            const requestDoc = requestsSnap.docs[0];
+            await requestDoc.ref.update({ status: 'accepted' });
+            
+            // Add to each other's friends list
+            await db.collection('users').doc(currentUser.username).update({
+                friends: firebase.firestore.FieldValue.arrayUnion(fromUser)
+            });
+            
+            await db.collection('users').doc(fromUser).update({
+                friends: firebase.firestore.FieldValue.arrayUnion(currentUser.username)
+            });
+            
+            // Refresh current user data
+            const updatedUser = await db.collection('users').doc(currentUser.username).get();
+            currentUser = { username: currentUser.username, ...updatedUser.data() };
+            
+            await renderFriends();
+            await renderPendingRequests();
+            
+            alert(`You are now friends with ${fromUser}!`);
+        } catch (error) {
+            console.error("Error accepting request:", error);
+            alert("Failed to accept friend request");
+        }
+    };
+
+    // Reject Friend Request
+    window.rejectRequest = async function(fromUser) {
+        try {
+            const requestsSnap = await db.collection('friendRequests')
+                .where('from', '==', fromUser)
+                .where('to', '==', currentUser.username)
+                .where('status', '==', 'pending')
+                .get();
+            
+            if (!requestsSnap.empty) {
+                await requestsSnap.docs[0].ref.delete();
+            }
+            
+            await renderPendingRequests();
+            alert(`Friend request from ${fromUser} declined`);
+        } catch (error) {
+            console.error("Error rejecting request:", error);
+            alert("Failed to decline request");
+        }
+    };
+
+    // Chat Functions
     async function openChat(chatId, type) {
         currentChatId = chatId;
         currentChatType = type;
-        document.getElementById('chatView').classList.add('open');
-        document.getElementById('chatName').innerText = chatId;
+        
+        const chatView = document.getElementById('chatView');
+        chatView.classList.add('open');
+        
+        // Get friend's display name
+        const friendDoc = await db.collection('users').doc(chatId).get();
+        const displayName = friendDoc.exists ? friendDoc.data().displayName : chatId;
+        document.getElementById('chatName').innerText = displayName;
+        
         // Subscribe to online status
-        const unsubscribePresence = subscribeToPresence(chatId, (online) => {
+        subscribeToPresence(chatId, (online) => {
             const statusSpan = document.getElementById('chatOnlineStatus');
-            if(statusSpan) statusSpan.innerHTML = online ? '<i class="fas fa-circle" style="color:#2ecc71; font-size:8px;"></i> online' : '<i class="fas fa-circle" style="color:#7f8c8d; font-size:8px;"></i> offline';
+            if (statusSpan) {
+                statusSpan.innerHTML = online ? '<i class="fas fa-circle" style="color:#2ecc71; font-size:8px;"></i> online' : '<i class="fas fa-circle" style="color:#7f8c8d; font-size:8px;"></i> offline';
+            }
         });
-        window._currentPresenceUnsub = unsubscribePresence;
         
         // Load messages
-        const chatDocId = [currentUser.uid, chatId].sort().join('_');
-        const msgsRef = db.collection('messages').doc(chatDocId).collection('chat').orderBy('timestamp');
-        const unsubscribeMsgs = msgsRef.onSnapshot(snapshot => {
+        const chatDocId = [currentUser.username, chatId].sort().join('_');
+        const messagesRef = db.collection('messages').doc(chatDocId).collection('chat').orderBy('timestamp');
+        
+        if (window.messagesUnsubscribe) window.messagesUnsubscribe();
+        window.messagesUnsubscribe = messagesRef.onSnapshot(snapshot => {
             const container = document.getElementById('chatMessages');
             container.innerHTML = '';
             snapshot.forEach(doc => {
                 const msg = doc.data();
-                const div = document.createElement('div');
-                div.className = `message ${msg.from === currentUser.uid ? 'sent' : 'received'}`;
-                div.innerText = msg.text;
-                container.appendChild(div);
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${msg.from === currentUser.username ? 'sent' : 'received'}`;
+                messageDiv.innerText = msg.text;
+                container.appendChild(messageDiv);
             });
             container.scrollTop = container.scrollHeight;
-            // Mark as read for push
-            if(chatType === 'friend') markMessagesRead(chatId);
+            
+            // Mark messages as read
+            if (chatId !== currentUser.username) {
+                markMessagesAsRead(chatId);
+            }
         });
-        window._currentMsgUnsub = unsubscribeMsgs;
         
         // Typing listener
         const typingRef = db.collection('typing').doc(chatDocId);
-        const unsubTyping = typingRef.onSnapshot(doc => {
+        if (window.typingUnsubscribe) window.typingUnsubscribe();
+        window.typingUnsubscribe = typingRef.onSnapshot(doc => {
             const data = doc.data();
             const typingDiv = document.getElementById('typingIndicator');
-            if(data && data.user !== currentUser.uid && data.isTyping) {
+            if (data && data.user !== currentUser.username && data.isTyping) {
                 typingDiv.style.display = 'block';
-                typingDiv.innerText = `${chatId} is typing...`;
+                typingDiv.innerText = `${displayName} is typing...`;
                 clearTimeout(typingTimeout);
                 typingTimeout = setTimeout(() => typingDiv.style.display = 'none', 2000);
-            } else typingDiv.style.display = 'none';
+            } else {
+                typingDiv.style.display = 'none';
+            }
         });
-        window._typingUnsub = unsubTyping;
     }
-    async function markMessagesRead(otherUser) {
-        const chatId = [currentUser.uid, otherUser].sort().join('_');
-        const unread = await db.collection('messages').doc(chatId).collection('chat').where('from', '==', otherUser).where('read', '==', false).get();
-        unread.forEach(d => d.ref.update({ read: true }));
+    
+    async function markMessagesAsRead(otherUser) {
+        const chatDocId = [currentUser.username, otherUser].sort().join('_');
+        const unreadMessages = await db.collection('messages').doc(chatDocId).collection('chat')
+            .where('from', '==', otherUser)
+            .where('read', '==', false)
+            .get();
+        
+        unreadMessages.forEach(doc => {
+            doc.ref.update({ read: true });
+        });
     }
+    
     async function sendMessage() {
         const input = document.getElementById('messageInput');
         const text = input.value.trim();
-        if(!text || !currentChatId) return;
-        const chatDocId = [currentUser.uid, currentChatId].sort().join('_');
+        if (!text || !currentChatId) return;
+        
+        const chatDocId = [currentUser.username, currentChatId].sort().join('_');
+        
         await db.collection('messages').doc(chatDocId).collection('chat').add({
-            from: currentUser.uid,
+            from: currentUser.username,
             text: text,
             timestamp: firebase.firestore.FieldValue.serverTimestamp(),
             read: false
         });
-        // Send typing stop
+        
+        // Stop typing indicator
         await db.collection('typing').doc(chatDocId).delete();
-        // Send push notification to recipient
-        sendPushNotification(currentChatId, `New message from ${currentUser.displayName}`, text);
+        
         input.value = '';
     }
-    async function sendTyping(isTyping) {
-        if(!currentChatId) return;
-        const chatDocId = [currentUser.uid, currentChatId].sort().join('_');
-        if(isTyping) {
-            await db.collection('typing').doc(chatDocId).set({ user: currentUser.uid, isTyping: true, timestamp: Date.now() });
-            setTimeout(() => db.collection('typing').doc(chatDocId).delete(), 2000);
-        } else await db.collection('typing').doc(chatDocId).delete();
+    
+    async function sendTypingIndicator(isTyping) {
+        if (!currentChatId) return;
+        const chatDocId = [currentUser.username, currentChatId].sort().join('_');
+        
+        if (isTyping) {
+            await db.collection('typing').doc(chatDocId).set({
+                user: currentUser.username,
+                isTyping: true,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            setTimeout(async () => {
+                await db.collection('typing').doc(chatDocId).delete();
+            }, 2000);
+        }
     }
-
+    
     function closeChat() {
-        document.getElementById('chatView').classList.remove('active');
         document.getElementById('chatView').classList.remove('open');
-        if(window._currentPresenceUnsub) window._currentPresenceUnsub();
-        if(window._currentMsgUnsub) window._currentMsgUnsub();
-        if(window._typingUnsub) window._typingUnsub();
+        if (window.messagesUnsubscribe) window.messagesUnsubscribe();
+        if (window.typingUnsubscribe) window.typingUnsubscribe();
         currentChatId = null;
     }
-
-    // Friend Requests
-    async function sendFriendRequest() {
-        const target = document.getElementById('friendUsername').value.trim().toLowerCase();
-        if(!target || target === currentUser.uid) return alert("Invalid");
-        await db.collection('friendRequests').add({
-            from: currentUser.uid,
-            to: target,
-            status: 'pending',
-            timestamp: new Date()
-        });
-        alert("Request sent!");
-        closeModal('addFriendModal');
+    
+    function closeModal(id) { 
+        document.getElementById(id).classList.add('hidden'); 
     }
-    async function acceptRequest(fromUser) {
-        const q = await db.collection('friendRequests').where('from', '==', fromUser).where('to', '==', currentUser.uid).where('status', '==', 'pending').get();
-        if(q.empty) return;
-        await q.docs[0].ref.update({ status: 'accepted' });
-        await db.collection('users').doc(currentUser.uid).update({ friends: firebase.firestore.FieldValue.arrayUnion(fromUser) });
-        await db.collection('users').doc(fromUser).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
-        renderFriends();
+    
+    // Groups (simplified)
+    function renderGroups() {
+        const container = document.getElementById('groupsList');
+        container.innerHTML = '<div class="empty"><i class="fas fa-users"></i> Groups feature coming soon!</div>';
     }
-
-    function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-    function escapeHtml(str) { return String(str).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
-
-    // UI Event Bindings
+    
+    // Load all user data
+    async function loadUserData(user) {
+        const email = user.email;
+        const username = email.replace('@chatrix.local', '');
+        
+        const userDoc = await db.collection('users').doc(username).get();
+        if (userDoc.exists) {
+            currentUser = { username: username, ...userDoc.data() };
+        } else {
+            currentUser = { username: username, displayName: username, friends: [] };
+        }
+        
+        document.getElementById('profileName').innerText = currentUser.displayName || currentUser.username;
+        
+        await renderFriends();
+        await renderPendingRequests();
+        renderGroups();
+        
+        // Set user as online
+        await setUserOnline(username, true);
+    }
+    
+    // Refresh everything
+    async function refreshData() {
+        if (currentUser) {
+            await renderFriends();
+            await renderPendingRequests();
+        }
+    }
+    
+    // Event Listeners
     document.getElementById('sendMsgBtn').onclick = sendMessage;
-    document.getElementById('messageInput').addEventListener('input', () => sendTyping(true));
+    document.getElementById('messageInput').addEventListener('input', (e) => {
+        sendTypingIndicator(true);
+    });
     document.getElementById('closeChatBtn').onclick = closeChat;
     document.getElementById('addFriendBtn').onclick = () => document.getElementById('addFriendModal').classList.remove('hidden');
     document.getElementById('sendRequestBtn').onclick = sendFriendRequest;
     document.getElementById('closeAddFriendModal').onclick = () => closeModal('addFriendModal');
+    document.getElementById('refreshBtn').onclick = refreshData;
+    
     document.getElementById('loginBtn').onclick = login;
     document.getElementById('signupBtn').onclick = signup;
-    document.getElementById('showSignupBtn').onclick = () => { document.getElementById('loginModal').classList.add('hidden'); document.getElementById('signupModal').classList.remove('hidden'); };
-    document.getElementById('showLoginBtn').onclick = () => { document.getElementById('signupModal').classList.add('hidden'); document.getElementById('loginModal').classList.remove('hidden'); };
-    document.getElementById('logoutBtn').onclick = async () => { await setUserOnline(currentUser?.uid, false); auth.signOut(); location.reload(); };
-    document.getElementById('notifPermissionBtn').onclick = requestNotificationPermission;
-    document.getElementById('createGroupBtn').onclick = () => alert("Groups feature: create your own space!");
+    document.getElementById('showSignupBtn').onclick = () => {
+        document.getElementById('loginModal').classList.add('hidden');
+        document.getElementById('signupModal').classList.remove('hidden');
+    };
+    document.getElementById('showLoginBtn').onclick = () => {
+        document.getElementById('signupModal').classList.add('hidden');
+        document.getElementById('loginModal').classList.remove('hidden');
+    };
+    
+    document.getElementById('createGroupBtn').onclick = () => alert("Groups feature coming soon!");
     document.getElementById('closeGroupModal').onclick = () => closeModal('createGroupModal');
     
-    // Auto presence on window close
-    window.addEventListener('beforeunload', () => { if(currentUser) setUserOnline(currentUser.uid, false); });
-    auth.onAuthStateChanged(async user => {
-        if(user) {
-            const email = user.email;
-            const username = email.replace('@chatrix.local', '');
-            const doc = await db.collection('users').doc(username).get();
-            if(!doc.exists) await db.collection('users').doc(username).set({ username, displayName: username, friends: [] });
-            currentUser = { uid: username, ...doc.data() };
+    document.getElementById('logoutBtn').onclick = async () => {
+        if (currentUser) await setUserOnline(currentUser.username, false);
+        auth.signOut();
+        location.reload();
+    };
+    
+    // Window unload
+    window.addEventListener('beforeunload', () => {
+        if (currentUser) setUserOnline(currentUser.username, false);
+    });
+    
+    // Auth state listener
+    auth.onAuthStateChanged(async (user) => {
+        if (user) {
             document.getElementById('loginModal').classList.add('hidden');
-            await setUserOnline(username, true);
-            loadUserData();
+            await loadUserData(user);
             showScreen('chats');
-            setInterval(() => setUserOnline(username, true), 30000);
+            
+            // Set interval to keep presence alive
+            setInterval(() => {
+                if (currentUser) setUserOnline(currentUser.username, true);
+            }, 30000);
         } else {
             document.getElementById('loginModal').classList.remove('hidden');
             document.getElementById('signupModal').classList.add('hidden');
         }
     });
+    
+    // Make functions global for onclick handlers
     window.openChat = openChat;
     window.acceptRequest = acceptRequest;
+    window.rejectRequest = rejectRequest;
+    window.closeModal = closeModal;
 </script>
 </body>
 </html>
