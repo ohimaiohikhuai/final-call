@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Real Chat · Live Online Status</title>
+    <title>Chatrix · Chat with GIFs & Notifications</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0a; font-family: system-ui, sans-serif; height: 100vh; overflow: hidden; }
@@ -17,13 +17,15 @@
         .user-info { display: flex; justify-content: space-between; align-items: center; margin-top: 15px; padding-top: 15px; border-top: 1px solid #242424; }
         .user-name { color: white; font-weight: bold; }
         .logout-btn { background: #2c2c2e; border: none; color: #aaa; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; }
+        .notif-btn { background: rgba(0,212,255,0.2); border: 1px solid #00d4ff; color: #00d4ff; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 12px; margin-left: 8px; }
+        .notif-btn.enabled { background: #00d4ff; color: black; }
         
         .add-friend { display: flex; gap: 8px; padding: 15px; border-bottom: 1px solid #242424; }
         .add-friend input { flex: 1; padding: 10px; background: #1f1f1f; border: none; border-radius: 25px; color: white; outline: none; }
         .add-friend button { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 8px 16px; border-radius: 25px; cursor: pointer; }
         
         .friends-list { flex: 1; overflow-y: auto; }
-        .friend-item { padding: 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #1a1a1a; transition: 0.2s; }
+        .friend-item { padding: 15px; display: flex; align-items: center; gap: 12px; cursor: pointer; border-bottom: 1px solid #1a1a1a; transition: 0.2s; position: relative; }
         .friend-item:hover { background: #1a1a1a; }
         .friend-item.active { background: #1a2a3a; border-left: 3px solid #00d4ff; }
         .friend-avatar { width: 48px; height: 48px; background: #1e2a2e; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; position: relative; }
@@ -32,6 +34,7 @@
         .status-offline { background: #5f6c6f; }
         .friend-name { color: white; font-weight: 600; }
         .friend-status-text { font-size: 11px; color: #888; margin-top: 2px; }
+        .unread-badge { background: #ff3b30; color: white; border-radius: 12px; padding: 2px 6px; font-size: 10px; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); }
         
         /* Chat Area */
         .chat-area { flex: 1; display: flex; flex-direction: column; background: #0a0a0a; }
@@ -44,10 +47,18 @@
         .message-received { background: #2c2c2e; color: white; align-self: flex-start; }
         .message-time { font-size: 10px; opacity: 0.7; margin-top: 4px; }
         .message-sender { font-size: 11px; font-weight: bold; margin-bottom: 4px; color: #00d4ff; }
+        .gif-message img { max-width: 200px; max-height: 150px; border-radius: 12px; margin-top: 5px; cursor: pointer; }
         
-        .input-area { padding: 20px; background: #121212; border-top: 1px solid #242424; display: flex; gap: 10px; }
-        .input-area input { flex: 1; padding: 12px; background: #2c2c2e; border: none; border-radius: 25px; color: white; outline: none; }
-        .input-area button { background: #00d4ff; border: none; padding: 12px 24px; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        .input-area { padding: 20px; background: #121212; border-top: 1px solid #242424; display: flex; gap: 10px; flex-wrap: wrap; }
+        .input-area input { flex: 1; padding: 12px; background: #2c2c2e; border: none; border-radius: 25px; color: white; outline: none; min-width: 150px; }
+        .input-area button { background: #00d4ff; border: none; padding: 12px 20px; border-radius: 25px; cursor: pointer; font-weight: bold; }
+        .gif-btn { background: #2c2c2e; color: white; border: none; padding: 12px; border-radius: 25px; cursor: pointer; }
+        
+        .gif-picker { position: absolute; bottom: 80px; right: 20px; background: #1c1c1e; border-radius: 20px; padding: 12px; z-index: 100; border: 1px solid #00d4ff; width: 300px; max-height: 400px; overflow-y: auto; display: none; }
+        .gif-picker.show { display: block; }
+        .gif-search { width: 100%; padding: 10px; background: #2c2c2e; border: none; border-radius: 20px; color: white; margin-bottom: 12px; }
+        .gif-results { display: flex; flex-wrap: wrap; gap: 8px; }
+        .gif-result { width: 80px; height: 80px; object-fit: cover; border-radius: 10px; cursor: pointer; }
         
         .empty-chat { text-align: center; color: #666; padding: 40px; }
         .no-friends { text-align: center; color: #666; padding: 40px; }
@@ -63,6 +74,9 @@
         .login-error { color: #ff8080; font-size: 13px; margin-top: 12px; }
         
         .hidden { display: none; }
+        
+        .notification-banner { position: fixed; top: 20px; right: 20px; background: #00d4ff; color: black; padding: 12px 20px; border-radius: 12px; z-index: 2000; animation: slideDown 0.3s ease; box-shadow: 0 4px 12px rgba(0,0,0,0.3); cursor: pointer; }
+        @keyframes slideDown { from { transform: translateY(-100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     </style>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
@@ -76,17 +90,20 @@
         <input type="password" id="loginPassword" placeholder="Password (min 4 chars)">
         <button id="loginBtn">Login / Sign Up</button>
         <div id="loginError" class="login-error"></div>
+        <p style="color:#888; font-size:12px; margin-top:16px;">Try: Alice, Bob, Charlie (any password works)</p>
     </div>
 </div>
 
 <div id="appContainer" class="app-container hidden">
-    <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-header">
             <h2><i class="fas fa-comment-dots"></i> Chatrix</h2>
             <div class="user-info">
                 <span class="user-name" id="currentUserName">User</span>
-                <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                <div>
+                    <button id="notifyBtn" class="notif-btn"><i class="fas fa-bell"></i> Notify</button>
+                    <button id="logoutBtn" class="logout-btn"><i class="fas fa-sign-out-alt"></i></button>
+                </div>
             </div>
         </div>
         <div class="add-friend">
@@ -96,7 +113,6 @@
         <div class="friends-list" id="friendsList"></div>
     </div>
 
-    <!-- Chat Area -->
     <div class="chat-area">
         <div class="chat-header">
             <h3 id="chatFriendName">Select a friend to chat</h3>
@@ -106,12 +122,20 @@
         </div>
         <div class="input-area" id="inputArea" style="display: none;">
             <input type="text" id="messageInput" placeholder="Type a message...">
+            <button id="gifBtn" class="gif-btn"><i class="fas fa-images"></i> GIF</button>
             <button id="sendBtn">Send</button>
         </div>
     </div>
 </div>
 
+<div id="gifPicker" class="gif-picker">
+    <input type="text" id="gifSearch" class="gif-search" placeholder="Search GIFs...">
+    <div id="gifResults" class="gif-results"></div>
+</div>
+
 <script>
+    const GIPHY_API_KEY = "On2HwNckx1yjG6TK0ixJVLVSKGN0My42";
+
     // Firebase Config
     const firebaseConfig = {
         apiKey: "AIzaSyAW4j8PG_rzXIe8Lj8lLMnSSjZSUnLkhTk",
@@ -128,7 +152,8 @@
     let currentChatFriend = null;
     let messagesUnsubscribe = null;
     let heartbeatInterval = null;
-    let friendsUnsubscribe = null;
+    let unreadCounts = {};
+    let notificationPermission = false;
 
     function showToast(msg) {
         const toast = document.createElement('div');
@@ -138,7 +163,96 @@
         setTimeout(() => toast.remove(), 3000);
     }
 
-    // ========== ONLINE STATUS (REAL-TIME) ==========
+    function showInAppNotification(title, body) {
+        const banner = document.createElement('div');
+        banner.className = 'notification-banner';
+        banner.innerHTML = `<strong>${escapeHtml(title)}</strong><br>${escapeHtml(body)}`;
+        banner.onclick = () => banner.remove();
+        document.body.appendChild(banner);
+        setTimeout(() => banner.remove(), 4000);
+        
+        if (notificationPermission && Notification.permission === 'granted') {
+            new Notification(title, { body: body });
+        }
+    }
+
+    async function requestNotificationPermission() {
+        if (!currentUser) {
+            showToast("Please login first");
+            return;
+        }
+        try {
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                notificationPermission = true;
+                document.getElementById('notifyBtn').classList.add('enabled');
+                document.getElementById('notifyBtn').innerHTML = '<i class="fas fa-bell"></i> On';
+                showToast("Notifications enabled!");
+            } else {
+                showToast("Notifications disabled");
+            }
+        } catch(e) {
+            showToast("Notifications not supported");
+        }
+    }
+
+    // ========== GIPHY ==========
+    async function searchGifs(query) {
+        if (!query.trim()) return [];
+        const url = `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(query)}&limit=20&rating=g`;
+        const response = await fetch(url);
+        const data = await response.json();
+        return data.data.map(gif => gif.images.fixed_height_small.url);
+    }
+
+    function buildGifPicker() {
+        const gifBtn = document.getElementById('gifBtn');
+        const picker = document.getElementById('gifPicker');
+        const searchInput = document.getElementById('gifSearch');
+        const resultsDiv = document.getElementById('gifResults');
+        
+        gifBtn.onclick = (e) => {
+            e.stopPropagation();
+            picker.classList.toggle('show');
+            if (picker.classList.contains('show')) searchInput.focus();
+        };
+        
+        searchInput.oninput = async (e) => {
+            const query = e.target.value;
+            if (query.length < 2) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
+            const gifs = await searchGifs(query);
+            resultsDiv.innerHTML = gifs.map(url => `<img src="${url}" class="gif-result" data-url="${url}">`).join('');
+            document.querySelectorAll('.gif-result').forEach(img => {
+                img.onclick = async () => {
+                    const gifUrl = img.getAttribute('data-url');
+                    if (currentChatFriend) {
+                        const chatId = getChatId(currentUser, currentChatFriend);
+                        await db.collection('chats').doc(chatId).collection('messages').add({
+                            from: currentUser,
+                            type: 'gif',
+                            data: gifUrl,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                            read: false
+                        });
+                    }
+                    picker.classList.remove('show');
+                    searchInput.value = '';
+                    resultsDiv.innerHTML = '';
+                };
+            });
+        };
+        
+        document.addEventListener('click', (e) => {
+            if (!gifBtn.contains(e.target) && !picker.contains(e.target)) {
+                picker.classList.remove('show');
+            }
+        });
+    }
+
+    // ========== ONLINE STATUS ==========
     async function setUserOnline(userId, isOnline) {
         if (!userId) return;
         await db.collection('presence').doc(userId).set({
@@ -168,15 +282,6 @@
         
         window.addEventListener('beforeunload', () => {
             if (currentUser) setUserOnline(currentUser, false);
-        });
-        
-        // Also set offline when page is hidden (optional)
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) {
-                setUserOnline(currentUser, false);
-            } else {
-                setUserOnline(currentUser, true);
-            }
         });
     }
 
@@ -216,6 +321,27 @@
         loadFriendsList();
     }
 
+    function updateUnreadBadge(friendId, count) {
+        const friendDiv = Array.from(document.querySelectorAll('.friend-item')).find(
+            item => item.querySelector('.friend-name')?.innerText === friendId
+        );
+        if (friendDiv) {
+            const existingBadge = friendDiv.querySelector('.unread-badge');
+            if (count > 0) {
+                if (existingBadge) {
+                    existingBadge.textContent = count;
+                } else {
+                    const badge = document.createElement('span');
+                    badge.className = 'unread-badge';
+                    badge.textContent = count;
+                    friendDiv.appendChild(badge);
+                }
+            } else if (existingBadge) {
+                existingBadge.remove();
+            }
+        }
+    }
+
     async function loadFriendsList() {
         const userDoc = await db.collection('users').doc(currentUser).get();
         const friends = userDoc.exists ? userDoc.data().friends || [] : [];
@@ -229,8 +355,8 @@
         container.innerHTML = '';
         
         for (const friend of friends) {
-            // Get real-time online status
             const isOnline = await getUserOnlineStatus(friend);
+            const unread = unreadCounts[friend] || 0;
             
             const friendDiv = document.createElement('div');
             friendDiv.className = `friend-item ${currentChatFriend === friend ? 'active' : ''}`;
@@ -243,11 +369,11 @@
                     <div class="friend-name">${escapeHtml(friend)}</div>
                     <div class="friend-status-text">${isOnline ? '🟢 Online' : '⚫ Offline'}</div>
                 </div>
+                ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ''}
             `;
             friendDiv.onclick = () => openChat(friend);
             container.appendChild(friendDiv);
             
-            // Listen for real-time status changes
             listenToFriendStatus(friend, (online) => {
                 const statusDot = friendDiv.querySelector('.status-dot');
                 const statusText = friendDiv.querySelector('.friend-status-text');
@@ -264,6 +390,13 @@
     // ========== MESSAGING ==========
     function getChatId(user1, user2) {
         return [user1, user2].sort().join('_');
+    }
+
+    function renderMessageContent(msg) {
+        if (msg.type === 'gif') {
+            return `<div class="gif-message"><img src="${msg.data}" class="media-preview" onclick="window.open('${msg.data}')"></div>`;
+        }
+        return `<div>${escapeHtml(msg.text)}</div>`;
     }
 
     async function sendMessage() {
@@ -285,11 +418,12 @@
     async function openChat(friendId) {
         currentChatFriend = friendId;
         
-        // Update UI
+        unreadCounts[friendId] = 0;
+        updateUnreadBadge(friendId, 0);
+        
         document.getElementById('chatFriendName').innerHTML = friendId;
         document.getElementById('inputArea').style.display = 'flex';
         
-        // Update active state in friends list
         document.querySelectorAll('.friend-item').forEach(item => {
             item.classList.remove('active');
         });
@@ -298,12 +432,22 @@
         );
         if (activeFriend) activeFriend.classList.add('active');
         
-        // Load messages
         if (messagesUnsubscribe) messagesUnsubscribe();
         
         const chatId = getChatId(currentUser, friendId);
         const messagesContainer = document.getElementById('messagesArea');
         messagesContainer.innerHTML = '';
+        
+        // Mark messages as read
+        const unreadSnapshot = await db.collection('chats').doc(chatId).collection('messages')
+            .where('from', '==', friendId)
+            .where('read', '==', false)
+            .get();
+        const batch = db.batch();
+        unreadSnapshot.forEach(doc => {
+            batch.update(doc.ref, { read: true });
+        });
+        await batch.commit();
         
         messagesUnsubscribe = db.collection('chats').doc(chatId).collection('messages')
             .orderBy('timestamp', 'asc')
@@ -311,6 +455,12 @@
                 snapshot.docChanges().forEach((change) => {
                     const msg = change.doc.data();
                     if (change.type === 'added') {
+                        if (msg.from !== currentUser && currentChatFriend !== friendId && !document.hasFocus()) {
+                            showInAppNotification(`New message from ${msg.from}`, msg.text || "Sent a GIF");
+                            unreadCounts[msg.from] = (unreadCounts[msg.from] || 0) + 1;
+                            updateUnreadBadge(msg.from, unreadCounts[msg.from]);
+                        }
+                        
                         const messageDiv = document.createElement('div');
                         const isSent = msg.from === currentUser;
                         messageDiv.className = `message ${isSent ? 'message-sent' : 'message-received'}`;
@@ -319,7 +469,7 @@
                         if (!isSent) {
                             messageHtml += `<div class="message-sender">${escapeHtml(msg.from)}</div>`;
                         }
-                        messageHtml += `<div>${escapeHtml(msg.text)}</div>`;
+                        messageHtml += renderMessageContent(msg);
                         messageHtml += `<div class="message-time">${formatTime(msg.timestamp)}</div>`;
                         messageDiv.innerHTML = messageHtml;
                         
@@ -327,16 +477,6 @@
                         messagesContainer.scrollTop = messagesContainer.scrollHeight;
                     }
                 });
-                
-                // Mark messages as read
-                if (messagesContainer.children.length > 0) {
-                    const unreadMessages = snapshot.docChanges().filter(
-                        change => change.type === 'added' && change.doc.data().from !== currentUser
-                    );
-                    if (unreadMessages.length > 0) {
-                        // Mark as read logic can be added here
-                    }
-                }
             });
     }
 
@@ -371,7 +511,6 @@
         const doc = await userRef.get();
         
         if (!doc.exists) {
-            // Create new account
             await userRef.set({
                 username: username,
                 displayName: username,
@@ -388,20 +527,17 @@
         currentUser = username;
         document.getElementById('currentUserName').innerHTML = currentUser;
         
-        // Start heartbeat for online status
         await startHeartbeat();
-        
-        // Load friends list
         await loadFriendsList();
+        buildGifPicker();
         
-        // Show app, hide login
-        document.getElementById('loginContainer').classList.add('hidden');
+        document.getElementById('loginContainer').style.display = 'none';
         document.getElementById('appContainer').classList.remove('hidden');
         
         errorDiv.innerText = '';
         showToast(`Welcome, ${username}!`);
         
-        // Set demo users online for testing
+        // Set demo users online
         const demoUsers = ['Alice', 'Bob', 'Charlie'];
         for (const user of demoUsers) {
             if (user !== currentUser) {
@@ -416,19 +552,26 @@
         if (currentUser) setUserOnline(currentUser, false);
         currentUser = null;
         currentChatFriend = null;
+        unreadCounts = {};
         
-        document.getElementById('loginContainer').classList.remove('hidden');
+        document.getElementById('loginContainer').style.display = 'flex';
         document.getElementById('appContainer').classList.add('hidden');
         document.getElementById('loginUsername').value = '';
         document.getElementById('loginPassword').value = '';
         document.getElementById('messagesArea').innerHTML = '<div class="empty-chat">👈 Select a friend to start chatting</div>';
         document.getElementById('inputArea').style.display = 'none';
+        
+        const notifyBtn = document.getElementById('notifyBtn');
+        notifyBtn.classList.remove('enabled');
+        notifyBtn.innerHTML = '<i class="fas fa-bell"></i> Notify';
+        notificationPermission = false;
     }
 
     // Event listeners
     document.getElementById('loginBtn').onclick = handleAuth;
     document.getElementById('logoutBtn').onclick = logout;
     document.getElementById('sendBtn').onclick = sendMessage;
+    document.getElementById('notifyBtn').onclick = requestNotificationPermission;
     document.getElementById('addFriendBtn').onclick = () => {
         const friendName = document.getElementById('friendUsername').value.trim().toLowerCase();
         if (friendName) addFriend(friendName);
