@@ -3,22 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Working Video Calls</title>
+    <title>Chatrix · Video Calls (Works on Same Device)</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0a; font-family: system-ui, sans-serif; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
-        video { width: 100%; background: #000; border-radius: 16px; margin: 10px 0; transform: scaleX(-1); }
-        .friend-item { background: #121212; border-radius: 24px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .call-btn { background: #00d4ff; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
-        input, button { padding: 10px; border-radius: 30px; border: none; margin: 5px; }
-        .hidden { display: none; }
-        .call-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; padding: 20px; }
-        .call-header { display: flex; justify-content: space-between; margin-bottom: 20px; color: white; }
         .auth-card { background: #121212; border-radius: 40px; padding: 32px; text-align: center; border: 1px solid #262626; }
+        .auth-card h2 { color: #00d4ff; margin-bottom: 20px; }
         .auth-card input { width: 100%; padding: 14px; background: #1f1f1f; border: none; border-radius: 60px; color: white; margin-bottom: 12px; }
         .auth-card button { width: 100%; background: #00d4ff; border: none; padding: 14px; border-radius: 60px; font-weight: bold; cursor: pointer; }
-        .status { color: #888; font-size: 12px; margin-top: 5px; }
+        .error-msg { color: #ff8080; font-size: 13px; margin-top: 12px; }
+        
+        .friend-item { background: #121212; border-radius: 24px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .call-btn { background: #00d4ff; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
+        .call-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        
+        .call-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; flex-direction: column; }
+        .call-header { background: #1a1a1a; padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .call-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .call-controls button { background: #2c2c2e; border: none; color: white; padding: 8px 12px; border-radius: 25px; cursor: pointer; font-size: 12px; }
+        .call-controls button.end-call { background: #ff3b30; }
+        .video-row { flex: 1; display: flex; gap: 10px; padding: 20px; }
+        .video-box { flex: 1; background: #1a1a1a; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9; }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .chat-panel { width: 260px; background: #121212; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 12px; }
+        .chat-messages { flex: 1; overflow-y: auto; font-size: 12px; color: #ccc; }
+        .chat-input { display: flex; gap: 8px; margin-top: 10px; }
+        .chat-input input { flex: 1; padding: 8px; background: #2c2c2e; border: none; border-radius: 20px; color: white; }
+        .chat-input button { background: #00d4ff; border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; }
+        
+        .incoming-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #121212; border-radius: 40px; padding: 32px; text-align: center; z-index: 2000; border: 2px solid #00d4ff; min-width: 260px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
+        .incoming-modal button { padding: 10px 20px; border-radius: 30px; font-weight: bold; margin: 0 10px; cursor: pointer; }
+        .accept { background: #22c55e; border: none; color: white; }
+        .decline { background: #ff3b30; border: none; color: white; }
+        
+        .header { display: flex; justify-content: space-between; margin-bottom: 20px; }
+        .logout-btn { background: #2c2c2e; border: none; color: #aaa; padding: 8px 16px; border-radius: 40px; cursor: pointer; }
+        .add-section { display: flex; gap: 10px; margin-bottom: 16px; }
+        .add-section input { flex: 1; padding: 12px; background: #1f1f1f; border: none; border-radius: 60px; color: white; }
+        .add-section button { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 0 20px; border-radius: 60px; cursor: pointer; }
+        .hidden { display: none; }
+        .toast { position: fixed; bottom: 100px; left: 20px; right: 20px; background: #1e2a2e; border-left: 4px solid #00d4ff; padding: 12px; border-radius: 16px; z-index: 2000; animation: slideUp 0.3s; text-align: center; }
+        @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .online { color: #22c55e; }
         .offline { color: #666; }
     </style>
@@ -28,36 +55,58 @@
 </head>
 <body>
 <div class="container">
-    <div id="loginDiv" class="auth-card">
-        <h2 style="color:#00d4ff;">📞 Chatrix</h2>
+    <div id="authDiv" class="auth-card">
+        <h2>📞 Chatrix</h2>
         <input type="text" id="loginName" placeholder="Username">
         <input type="password" id="loginPass" placeholder="Password (min 4 chars)">
         <button id="loginBtn">Login / Sign Up</button>
-        <div id="loginError" class="status"></div>
+        <div id="authError" class="error-msg"></div>
     </div>
 
     <div id="appDiv" class="hidden">
-        <h2 style="color:#00d4ff;">Friends</h2>
-        <div style="display: flex; gap: 10px; margin: 15px 0;">
-            <input type="text" id="friendName" placeholder="Add friend username" style="flex:1">
-            <button id="addFriendBtn" style="background:#00d4ff20; border:1px solid #00d4ff; color:#00d4ff;">Add</button>
+        <div class="header">
+            <h2>Friends</h2>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+        <div class="add-section">
+            <input type="text" id="friendName" placeholder="Add friend username">
+            <button id="addFriendBtn">Add</button>
         </div>
         <div id="friendsList"></div>
-        <p style="color:#666; font-size:11px; text-align:center; margin-top:20px;">🔐 Works across devices · TURN enabled</p>
+        <div class="add-section" style="margin-top: 16px;">
+            <input type="text" id="groupRoomName" placeholder="Group room name">
+            <button id="joinGroupBtn">Join Group</button>
+        </div>
+        <button id="createGroupBtn" class="call-btn" style="width:100%; margin-top:10px;">+ Create Group Room</button>
     </div>
 </div>
 
-<div id="callOverlay" class="call-overlay hidden">
+<div id="callDiv" class="call-overlay hidden">
     <div class="call-header">
-        <span id="callStatus">Connecting...</span>
-        <button id="hangupBtn" style="background:#ff3b30; border:none; padding:10px 20px; border-radius:30px; color:white; font-weight:bold;">End Call</button>
+        <div class="call-controls">
+            <button id="muteMicBtn"><i class="fas fa-microphone"></i> Mute</button>
+            <button id="muteVideoBtn"><i class="fas fa-video"></i> Video Off</button>
+            <button id="shareScreenBtn"><i class="fas fa-desktop"></i> Screen</button>
+            <button id="chatToggleBtn"><i class="fas fa-comment"></i> Chat</button>
+            <button id="hangupBtn" class="end-call"><i class="fas fa-phone-slash"></i> End</button>
+        </div>
     </div>
-    <video id="localVideo" autoplay muted playsinline></video>
-    <video id="remoteVideo" autoplay playsinline></video>
+    <div style="display: flex; flex: 1;">
+        <div class="video-row">
+            <div class="video-box"><video id="localVideo" autoplay muted playsinline></video></div>
+            <div class="video-box"><video id="remoteVideo" autoplay playsinline></video></div>
+        </div>
+        <div id="chatPanel" class="chat-panel hidden">
+            <div id="chatMsgs" class="chat-messages"></div>
+            <div class="chat-input">
+                <input type="text" id="chatInput" placeholder="Message...">
+                <button id="sendChat"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
-    // Firebase Config
     const firebaseConfig = {
         apiKey: "AIzaSyAW4j8PG_rzXIe8Lj8lLMnSSjZSUnLkhTk",
         authDomain: "tiktok-211df.firebaseapp.com",
@@ -69,236 +118,335 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ========== YOUR TURN CREDENTIALS FROM METERED ==========
     const TURN_CONFIG = {
         iceServers: [
             { urls: "stun:stun.relay.metered.ca:80" },
-            {
-                urls: "turn:global.relay.metered.ca:80",
-                username: "80d7f1b46c263f4738b8ee87",
-                credential: "rudw4iGDMIQLP/Y6",
-            },
-            {
-                urls: "turn:global.relay.metered.ca:80?transport=tcp",
-                username: "80d7f1b46c263f4738b8ee87",
-                credential: "rudw4iGDMIQLP/Y6",
-            },
-            {
-                urls: "turn:global.relay.metered.ca:443",
-                username: "80d7f1b46c263f4738b8ee87",
-                credential: "rudw4iGDMIQLP/Y6",
-            },
-            {
-                urls: "turns:global.relay.metered.ca:443?transport=tcp",
-                username: "80d7f1b46c263f4738b8ee87",
-                credential: "rudw4iGDMIQLP/Y6",
-            },
-        ],
+            { urls: "turn:global.relay.metered.ca:80", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
+            { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
+            { urls: "turn:global.relay.metered.ca:443", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
+            { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" }
+        ]
     };
-    // ==========================================================
 
     let currentUser = null;
     let localStream = null;
-    let currentPeer = null;
-    let currentCall = null;
-    let heartbeatInterval = null;
+    let peer = null;
+    let activeCall = null;
+    let currentRoomId = null;
+    let chatUnsub = null;
+    let heartbeat = null;
+    let isScreenSharing = false;
+    let originalVideoTrack = null;
 
-    async function getCamera() {
+    function showToast(msg) {
+        const t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
+        document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+    }
+
+    async function getLocalStream() {
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
         try {
-            if (localStream) localStream.getTracks().forEach(t => t.stop());
             localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             document.getElementById('localVideo').srcObject = localStream;
             return true;
-        } catch(e) { 
-            alert("Camera/microphone access needed for calls");
-            return false; 
-        }
+        } catch(e) { showToast("Camera/mic needed"); return false; }
     }
 
     async function startCall(friendId) {
-        const callDiv = document.getElementById('callOverlay');
-        const callStatus = document.getElementById('callStatus');
-        callDiv.classList.remove('hidden');
-        callStatus.innerText = "📞 Calling...";
+        const online = await getOnlineStatus(friendId);
+        if (!online) { showToast(`${friendId} is offline`); return; }
+        if (!await getLocalStream()) return;
         
-        const ok = await getCamera();
-        if (!ok) return;
+        currentRoomId = `call_${currentUser}_${friendId}_${Date.now()}`;
+        await db.collection('calls').add({
+            from: currentUser, to: friendId, roomId: currentRoomId, status: 'ringing', timestamp: new Date()
+        });
         
-        const friendDoc = await db.collection('peers').doc(friendId).get();
-        if (!friendDoc.exists) {
-            alert(`${friendId} is offline`);
-            callDiv.classList.add('hidden');
-            return;
+        document.getElementById('callDiv').classList.remove('hidden');
+        document.getElementById('appDiv').classList.add('hidden');
+        
+        const friendPeer = await db.collection('peers').doc(friendId).get();
+        if (!friendPeer.exists) { showToast("Friend offline"); endCall(); return; }
+        
+        activeCall = peer.call(friendPeer.data().peerId, localStream);
+        activeCall.on('stream', (s) => { document.getElementById('remoteVideo').srcObject = s; });
+        activeCall.on('close', () => endCall());
+        activeCall.on('error', () => { showToast("Call failed"); endCall(); });
+        
+        setupChat(currentRoomId);
+    }
+
+    async function acceptCall(callId, fromId, roomId) {
+        document.getElementById('incomingModal')?.remove();
+        if (!await getLocalStream()) return;
+        currentRoomId = roomId;
+        document.getElementById('callDiv').classList.remove('hidden');
+        document.getElementById('appDiv').classList.add('hidden');
+        
+        const fromPeer = await db.collection('peers').doc(fromId).get();
+        if (fromPeer.exists) {
+            activeCall = peer.call(fromPeer.data().peerId, localStream);
+            activeCall.on('stream', (s) => { document.getElementById('remoteVideo').srcObject = s; });
+            activeCall.on('close', () => endCall());
         }
+        await db.collection('calls').doc(callId).delete();
+        setupChat(roomId);
+    }
+
+    async function declineCall(callId) {
+        await db.collection('calls').doc(callId).delete();
+        document.getElementById('incomingModal')?.remove();
+    }
+
+    function endCall() {
+        if (activeCall) activeCall.close();
+        if (localStream) localStream.getTracks().forEach(t => t.stop());
+        if (chatUnsub) chatUnsub();
+        localStream = null;
+        activeCall = null;
+        currentRoomId = null;
+        document.getElementById('callDiv').classList.add('hidden');
+        document.getElementById('appDiv').classList.remove('hidden');
+        document.getElementById('remoteVideo').srcObject = null;
+        document.getElementById('localVideo').srcObject = null;
+        showToast("Call ended");
+    }
+
+    async function joinGroupCall(roomName) {
+        if (!await getLocalStream()) return;
+        currentRoomId = roomName;
+        document.getElementById('callDiv').classList.remove('hidden');
+        document.getElementById('appDiv').classList.add('hidden');
         
-        const friendPeerId = friendDoc.data().peerId;
-        const call = currentPeer.call(friendPeerId, localStream);
-        currentCall = call;
+        const roomRef = db.collection('groupRooms').doc(roomName);
+        const roomDoc = await roomRef.get();
         
-        call.on('stream', (remoteStream) => {
-            document.getElementById('remoteVideo').srcObject = remoteStream;
-            callStatus.innerText = "🎥 In call";
-        });
-        
-        call.on('close', () => {
-            callDiv.classList.add('hidden');
-            document.getElementById('remoteVideo').srcObject = null;
-        });
-        
-        call.on('error', (err) => {
-            console.error("Call error:", err);
-            alert("Call failed. Check if other user is online.");
-            callDiv.classList.add('hidden');
+        if (!roomDoc.exists) {
+            await roomRef.set({ creator: currentUser, participants: [currentUser], createdAt: new Date() });
+            roomRef.onSnapshot(async (snap) => {
+                const data = snap.data();
+                if (data && data.participants && !activeCall) {
+                    for (let p of data.participants) {
+                        if (p !== currentUser) {
+                            const pPeer = await db.collection('peers').doc(p).get();
+                            if (pPeer.exists && !activeCall) {
+                                activeCall = peer.call(pPeer.data().peerId, localStream);
+                                activeCall.on('stream', (s) => { document.getElementById('remoteVideo').srcObject = s; });
+                                activeCall.on('close', () => endCall());
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            await roomRef.update({ participants: firebase.firestore.FieldValue.arrayUnion(currentUser) });
+            const creatorPeer = await db.collection('peers').doc(roomDoc.data().creator).get();
+            if (creatorPeer.exists) {
+                activeCall = peer.call(creatorPeer.data().peerId, localStream);
+                activeCall.on('stream', (s) => { document.getElementById('remoteVideo').srcObject = s; });
+                activeCall.on('close', () => endCall());
+            }
+        }
+        setupChat(roomName);
+    }
+
+    function setupChat(roomId) {
+        if (chatUnsub) chatUnsub();
+        const container = document.getElementById('chatMsgs');
+        container.innerHTML = '';
+        chatUnsub = db.collection('groupChats').doc(roomId).collection('msgs').orderBy('time').onSnapshot(snap => {
+            snap.docChanges().forEach(ch => {
+                if (ch.type === 'added') {
+                    const m = ch.doc.data();
+                    const d = document.createElement('div');
+                    d.innerHTML = `<b>${escapeHtml(m.from)}:</b> ${escapeHtml(m.text)}`;
+                    container.appendChild(d);
+                    container.scrollTop = container.scrollHeight;
+                }
+            });
         });
     }
 
-    function listenForCalls() {
-        if (!currentPeer) return;
-        currentPeer.on('call', async (call) => {
-            const callDiv = document.getElementById('callOverlay');
-            const callStatus = document.getElementById('callStatus');
-            callDiv.classList.remove('hidden');
-            callStatus.innerText = "📞 Incoming call...";
-            
-            const ok = await getCamera();
-            if (!ok) return;
-            
-            call.answer(localStream);
-            currentCall = call;
-            
-            call.on('stream', (remoteStream) => {
-                document.getElementById('remoteVideo').srcObject = remoteStream;
-                callStatus.innerText = "🎥 In call";
-            });
-            
-            call.on('close', () => {
-                callDiv.classList.add('hidden');
-                document.getElementById('remoteVideo').srcObject = null;
-            });
+    async function sendChat() {
+        const inp = document.getElementById('chatInput');
+        const txt = inp.value.trim();
+        if (!txt || !currentRoomId) return;
+        await db.collection('groupChats').doc(currentRoomId).collection('msgs').add({
+            from: currentUser, text: txt, time: new Date()
         });
+        inp.value = '';
     }
+
+    async function toggleScreenShare() {
+        if (!activeCall) return;
+        if (isScreenSharing) {
+            const newStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            const newTrack = newStream.getVideoTracks()[0];
+            const sender = activeCall.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
+            if (sender) await sender.replaceTrack(newTrack);
+            localStream.removeTrack(localStream.getVideoTracks()[0]);
+            localStream.addTrack(newTrack);
+            document.getElementById('localVideo').srcObject = localStream;
+            isScreenSharing = false;
+            document.getElementById('shareScreenBtn').style.background = '#2c2c2e';
+        } else {
+            try {
+                const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const screenTrack = screenStream.getVideoTracks()[0];
+                const sender = activeCall.peerConnection?.getSenders().find(s => s.track?.kind === 'video');
+                if (sender) await sender.replaceTrack(screenTrack);
+                localStream.removeTrack(localStream.getVideoTracks()[0]);
+                localStream.addTrack(screenTrack);
+                document.getElementById('localVideo').srcObject = localStream;
+                isScreenSharing = true;
+                document.getElementById('shareScreenBtn').style.background = '#00d4ff';
+                screenTrack.onended = () => toggleScreenShare();
+            } catch(e) { showToast("Screen share cancelled"); }
+        }
+    }
+
+    function toggleMic() {
+        if (localStream) {
+            const a = localStream.getAudioTracks()[0];
+            if (a) a.enabled = !a.enabled;
+            document.getElementById('muteMicBtn').innerHTML = a?.enabled ? '<i class="fas fa-microphone"></i> Mute' : '<i class="fas fa-microphone-slash"></i> Unmute';
+        }
+    }
+    function toggleVideo() {
+        if (localStream) {
+            const v = localStream.getVideoTracks()[0];
+            if (v) v.enabled = !v.enabled;
+            document.getElementById('muteVideoBtn').innerHTML = v?.enabled ? '<i class="fas fa-video"></i> Video Off' : '<i class="fas fa-video-slash"></i> Video On';
+        }
+    }
+    function toggleChat() { document.getElementById('chatPanel').classList.toggle('hidden'); }
 
     async function initPeer() {
-        return new Promise((resolve) => {
-            const peer = new Peer(null, { config: TURN_CONFIG });
-            peer.on('open', (id) => {
-                currentPeer = peer;
-                listenForCalls();
-                resolve(id);
-            });
-            peer.on('error', (err) => console.log("Peer error:", err));
+        return new Promise((res) => {
+            const p = new Peer(null, { config: TURN_CONFIG });
+            p.on('open', (id) => { peer = p; res(id); });
+            p.on('error', (e) => console.log(e));
         });
     }
 
-    async function setStatus(userId, online) {
-        await db.collection('presence').doc(userId).set({ online, lastSeen: new Date() }, { merge: true });
+    async function getOnlineStatus(u) {
+        const s = await db.collection('presence').doc(u).get();
+        return s.exists ? s.data().online : false;
     }
-
-    async function getStatus(userId) {
-        const snap = await db.collection('presence').doc(userId).get();
-        return snap.exists ? snap.data().online : false;
+    async function setOnline(u, online) {
+        await db.collection('presence').doc(u).set({ online, lastSeen: new Date() }, { merge: true });
     }
-
     async function startHeartbeat() {
-        if (heartbeatInterval) clearInterval(heartbeatInterval);
-        await setStatus(currentUser, true);
-        heartbeatInterval = setInterval(() => setStatus(currentUser, true), 15000);
-        window.addEventListener('beforeunload', () => setStatus(currentUser, false));
+        if (heartbeat) clearInterval(heartbeat);
+        await setOnline(currentUser, true);
+        heartbeat = setInterval(() => setOnline(currentUser, true), 15000);
+        window.addEventListener('beforeunload', () => setOnline(currentUser, false));
     }
 
-    async function sendFriendRequest(username) {
-        if (username === currentUser) { alert("Can't add yourself"); return; }
-        const userRef = db.collection('users').doc(currentUser);
-        const doc = await userRef.get();
-        const friends = doc.exists ? doc.data().friends || [] : [];
-        if (friends.includes(username)) { alert("Already friends"); return; }
-        await userRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(username) });
-        await db.collection('users').doc(username).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser) });
+    async function addFriend(name) {
+        if (name === currentUser) return;
+        const u = await db.collection('users').doc(currentUser).get();
+        const f = u.exists ? u.data().friends || [] : [];
+        if (f.includes(name)) return;
+        await db.collection('users').doc(currentUser).update({ friends: firebase.firestore.FieldValue.arrayUnion(name) });
+        await db.collection('users').doc(name).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser) });
         loadFriends();
+        showToast(`Added ${name}`);
     }
 
     async function loadFriends() {
-        const doc = await db.collection('users').doc(currentUser).get();
-        const friends = doc.exists ? doc.data().friends || [] : [];
-        const container = document.getElementById('friendsList');
-        if (!container) return;
-        
-        if (friends.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#666; padding:30px;">No friends yet. Add someone!</div>';
-            return;
-        }
-        
+        const u = await db.collection('users').doc(currentUser).get();
+        const friends = u.exists ? u.data().friends || [] : [];
+        const cont = document.getElementById('friendsList');
+        if (!cont) return;
+        if (friends.length === 0) { cont.innerHTML = '<div style="text-align:center;padding:30px;color:#666;">No friends yet</div>'; return; }
         let html = '';
-        for (const f of friends) {
-            const online = await getStatus(f);
+        for (let f of friends) {
+            const online = await getOnlineStatus(f);
             html += `<div class="friend-item">
-                <div><strong>${f}</strong> <span class="${online ? 'online' : 'offline'}">${online ? '● Online' : '○ Offline'}</span></div>
+                <span><strong>${escapeHtml(f)}</strong> <span class="${online ? 'online' : 'offline'}">${online ? '● Online' : '○ Offline'}</span></span>
                 <button class="call-btn" onclick="startCall('${f}')" ${!online ? 'disabled' : ''}>📞 Call</button>
             </div>`;
         }
-        container.innerHTML = html;
+        cont.innerHTML = html;
     }
 
     async function initUser() {
-        const ref = db.collection('users').doc(currentUser);
-        if (!(await ref.get()).exists) {
-            await ref.set({ username: currentUser, friends: [], createdAt: new Date() });
-        }
+        const r = await db.collection('users').doc(currentUser).get();
+        if (!r.exists) await db.collection('users').doc(currentUser).set({ username: currentUser, friends: [], createdAt: new Date() });
         await loadFriends();
         setInterval(() => loadFriends(), 5000);
     }
 
-    async function handleAuth() {
-        const username = document.getElementById('loginName').value.trim().toLowerCase();
-        const password = document.getElementById('loginPass').value;
-        const errorDiv = document.getElementById('loginError');
-        
-        if (!username || password.length < 4) {
-            errorDiv.innerText = 'Username and password (min 4 chars)';
-            return;
-        }
-        
-        const userRef = db.collection('users').doc(username);
-        const doc = await userRef.get();
-        
-        if (!doc.exists) {
-            await userRef.set({ username, friends: [], passwordHash: btoa(password), createdAt: new Date() });
-            errorDiv.innerText = '✅ Account created!';
-        } else if (doc.data().passwordHash !== btoa(password)) {
-            errorDiv.innerText = '❌ Wrong password';
-            return;
-        }
-        
-        currentUser = username;
-        
-        const peerId = await initPeer();
-        await db.collection('peers').doc(username).set({ peerId });
-        
-        await startHeartbeat();
-        await initUser();
-        
-        for (const u of ['Alice', 'Bob', 'Charlie']) {
-            if (u !== username) await setStatus(u, true);
-        }
-        
-        document.getElementById('loginDiv').style.display = 'none';
-        document.getElementById('appDiv').classList.remove('hidden');
-        errorDiv.innerText = '';
+    function listenForCalls() {
+        db.collection('calls').where('to', '==', currentUser).where('status', '==', 'ringing').onSnapshot(snap => {
+            snap.forEach(doc => {
+                const c = doc.data();
+                if (c && c.from !== currentUser && !document.getElementById('incomingModal')) {
+                    const m = document.createElement('div'); m.id = 'incomingModal'; m.className = 'incoming-modal';
+                    m.innerHTML = `<div style="width:60px;height:60px;background:#00d4ff20;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-phone" style="font-size:28px;color:#00d4ff;"></i></div>
+                        <h3>Incoming Call</h3><p>from <strong>${escapeHtml(c.from)}</strong></p>
+                        <div><button class="accept" onclick="acceptCall('${doc.id}', '${c.from}', '${c.roomId}')">Accept</button>
+                        <button class="decline" onclick="declineCall('${doc.id}')">Decline</button></div>`;
+                    document.body.appendChild(m);
+                }
+            });
+        });
     }
 
+    async function handleAuth() {
+        const name = document.getElementById('loginName').value.trim().toLowerCase();
+        const pass = document.getElementById('loginPass').value;
+        if (!name || pass.length < 4) { document.getElementById('authError').innerText = 'Username & password min 4 chars'; return; }
+        const ref = db.collection('users').doc(name);
+        const doc = await ref.get();
+        if (!doc.exists) {
+            await ref.set({ username: name, friends: [], passwordHash: btoa(pass), createdAt: new Date() });
+        } else if (doc.data().passwordHash !== btoa(pass)) {
+            document.getElementById('authError').innerText = 'Wrong password';
+            return;
+        }
+        currentUser = name;
+        const pid = await initPeer();
+        await db.collection('peers').doc(name).set({ peerId: pid });
+        await startHeartbeat();
+        await initUser();
+        listenForCalls();
+        for (let u of ['Alice', 'Bob', 'Charlie']) if (u !== name) await setOnline(u, true);
+        document.getElementById('authDiv').style.display = 'none';
+        document.getElementById('appDiv').classList.remove('hidden');
+        showToast(`Welcome ${name}`);
+    }
+
+    function logout() {
+        if (heartbeat) clearInterval(heartbeat);
+        if (currentUser) setOnline(currentUser, false);
+        if (activeCall) endCall();
+        if (peer) peer.destroy();
+        currentUser = null;
+        document.getElementById('authDiv').style.display = 'block';
+        document.getElementById('appDiv').classList.add('hidden');
+    }
+
+    function escapeHtml(s) { return String(s).replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;'); }
+
+    window.startCall = startCall;
+    window.acceptCall = acceptCall;
+    window.declineCall = declineCall;
+    window.addFriend = addFriend;
+
     document.getElementById('loginBtn').onclick = handleAuth;
-    document.getElementById('addFriendBtn').onclick = () => {
-        const name = document.getElementById('friendName').value.trim().toLowerCase();
-        if (name) sendFriendRequest(name);
-    };
-    document.getElementById('hangupBtn').onclick = () => {
-        if (currentCall) currentCall.close();
-        document.getElementById('callOverlay').classList.add('hidden');
-        document.getElementById('remoteVideo').srcObject = null;
-    };
-    
-    document.getElementById('loginName').addEventListener('keypress', e => { if (e.key === 'Enter') handleAuth(); });
-    document.getElementById('loginPass').addEventListener('keypress', e => { if (e.key === 'Enter') handleAuth(); });
+    document.getElementById('logoutBtn').onclick = logout;
+    document.getElementById('addFriendBtn').onclick = () => { const n = document.getElementById('friendName').value.trim().toLowerCase(); if (n) addFriend(n); };
+    document.getElementById('joinGroupBtn').onclick = () => { const r = document.getElementById('groupRoomName').value.trim(); if (r) joinGroupCall(r); else showToast("Enter room name"); };
+    document.getElementById('createGroupBtn').onclick = () => { const r = prompt("Room name:", "group_" + Date.now()); if (r) joinGroupCall(r); };
+    document.getElementById('hangupBtn').onclick = endCall;
+    document.getElementById('muteMicBtn').onclick = toggleMic;
+    document.getElementById('muteVideoBtn').onclick = toggleVideo;
+    document.getElementById('shareScreenBtn').onclick = toggleScreenShare;
+    document.getElementById('chatToggleBtn').onclick = toggleChat;
+    document.getElementById('sendChat').onclick = sendChat;
+    document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendChat(); });
 </script>
 </body>
 </html>
