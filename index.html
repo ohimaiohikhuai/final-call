@@ -3,38 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Video Calls (Works on Same Device)</title>
+    <title>Chatrix · Full Features</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0a; font-family: system-ui, sans-serif; padding: 20px; }
         .container { max-width: 500px; margin: 0 auto; }
+        
         .auth-card { background: #121212; border-radius: 40px; padding: 32px; text-align: center; border: 1px solid #262626; }
         .auth-card h2 { color: #00d4ff; margin-bottom: 20px; }
         .auth-card input { width: 100%; padding: 14px; background: #1f1f1f; border: none; border-radius: 60px; color: white; margin-bottom: 12px; }
         .auth-card button { width: 100%; background: #00d4ff; border: none; padding: 14px; border-radius: 60px; font-weight: bold; cursor: pointer; }
         .error-msg { color: #ff8080; font-size: 13px; margin-top: 12px; }
         
-        .friend-item { background: #121212; border-radius: 24px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .friend-item { background: #121212; border-radius: 24px; padding: 14px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
         .call-btn { background: #00d4ff; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
         .call-btn:disabled { opacity: 0.4; cursor: not-allowed; }
         
         .call-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; flex-direction: column; }
-        .call-header { background: #1a1a1a; padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .call-controls { display: flex; gap: 10px; flex-wrap: wrap; }
+        .call-header { background: #1a1a1a; padding: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .call-controls { display: flex; gap: 8px; flex-wrap: wrap; }
         .call-controls button { background: #2c2c2e; border: none; color: white; padding: 8px 12px; border-radius: 25px; cursor: pointer; font-size: 12px; }
         .call-controls button.end-call { background: #ff3b30; }
         .video-row { flex: 1; display: flex; gap: 10px; padding: 20px; }
         .video-box { flex: 1; background: #1a1a1a; border-radius: 16px; overflow: hidden; display: flex; align-items: center; justify-content: center; aspect-ratio: 16/9; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .chat-panel { width: 260px; background: #121212; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 12px; }
-        .chat-messages { flex: 1; overflow-y: auto; font-size: 12px; color: #ccc; }
-        .chat-input { display: flex; gap: 8px; margin-top: 10px; }
-        .chat-input input { flex: 1; padding: 8px; background: #2c2c2e; border: none; border-radius: 20px; color: white; }
-        .chat-input button { background: #00d4ff; border: none; padding: 8px 12px; border-radius: 20px; cursor: pointer; }
+        .chat-sidebar { width: 280px; background: #121212; border-left: 1px solid #333; display: flex; flex-direction: column; padding: 12px; }
+        .chat-messages { flex: 1; overflow-y: auto; font-size: 12px; color: #ccc; max-height: 400px; }
+        .chat-messages div { padding: 5px 0; border-bottom: 0.5px solid #2a2a2a; }
+        .chat-input-area { display: flex; gap: 8px; margin-top: 10px; }
+        .chat-input-area input { flex: 1; padding: 10px; background: #2c2c2e; border: none; border-radius: 25px; color: white; }
+        .chat-input-area button { background: #00d4ff; border: none; padding: 10px 15px; border-radius: 25px; cursor: pointer; }
         
-        .incoming-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #121212; border-radius: 40px; padding: 32px; text-align: center; z-index: 2000; border: 2px solid #00d4ff; min-width: 260px; animation: pulse 1s infinite; }
+        .incoming-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #121212; border-radius: 40px; padding: 32px; text-align: center; z-index: 2000; border: 2px solid #00d4ff; min-width: 280px; animation: pulse 1s infinite; }
         @keyframes pulse { 0% { transform: translate(-50%, -50%) scale(1); } 50% { transform: translate(-50%, -50%) scale(1.05); } 100% { transform: translate(-50%, -50%) scale(1); } }
-        .incoming-modal button { padding: 10px 20px; border-radius: 30px; font-weight: bold; margin: 0 10px; cursor: pointer; }
+        .incoming-modal button { padding: 10px 20px; border-radius: 40px; font-weight: bold; margin: 0 10px; cursor: pointer; }
         .accept { background: #22c55e; border: none; color: white; }
         .decline { background: #ff3b30; border: none; color: white; }
         
@@ -43,9 +45,10 @@
         .add-section { display: flex; gap: 10px; margin-bottom: 16px; }
         .add-section input { flex: 1; padding: 12px; background: #1f1f1f; border: none; border-radius: 60px; color: white; }
         .add-section button { background: rgba(0,212,255,0.1); border: 1px solid #00d4ff; color: #00d4ff; padding: 0 20px; border-radius: 60px; cursor: pointer; }
-        .hidden { display: none; }
-        .toast { position: fixed; bottom: 100px; left: 20px; right: 20px; background: #1e2a2e; border-left: 4px solid #00d4ff; padding: 12px; border-radius: 16px; z-index: 2000; animation: slideUp 0.3s; text-align: center; }
+        
+        .toast { position: fixed; bottom: 100px; left: 20px; right: 20px; background: #1e2a2e; border-left: 4px solid #00d4ff; padding: 12px; border-radius: 16px; z-index: 2000; animation: slideUp 0.3s; text-align: center; color: white; }
         @keyframes slideUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .hidden { display: none; }
         .online { color: #22c55e; }
         .offline { color: #666; }
     </style>
@@ -87,7 +90,7 @@
             <button id="muteMicBtn"><i class="fas fa-microphone"></i> Mute</button>
             <button id="muteVideoBtn"><i class="fas fa-video"></i> Video Off</button>
             <button id="shareScreenBtn"><i class="fas fa-desktop"></i> Screen</button>
-            <button id="chatToggleBtn"><i class="fas fa-comment"></i> Chat</button>
+            <button id="chatBtn"><i class="fas fa-comment"></i> Chat</button>
             <button id="hangupBtn" class="end-call"><i class="fas fa-phone-slash"></i> End</button>
         </div>
     </div>
@@ -96,11 +99,11 @@
             <div class="video-box"><video id="localVideo" autoplay muted playsinline></video></div>
             <div class="video-box"><video id="remoteVideo" autoplay playsinline></video></div>
         </div>
-        <div id="chatPanel" class="chat-panel hidden">
+        <div id="chatSidebar" class="chat-sidebar hidden">
             <div id="chatMsgs" class="chat-messages"></div>
-            <div class="chat-input">
+            <div class="chat-input-area">
                 <input type="text" id="chatInput" placeholder="Message...">
-                <button id="sendChat"><i class="fas fa-paper-plane"></i></button>
+                <button id="sendChatBtn"><i class="fas fa-paper-plane"></i></button>
             </div>
         </div>
     </div>
@@ -123,8 +126,7 @@
             { urls: "stun:stun.relay.metered.ca:80" },
             { urls: "turn:global.relay.metered.ca:80", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
             { urls: "turn:global.relay.metered.ca:80?transport=tcp", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
-            { urls: "turn:global.relay.metered.ca:443", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" },
-            { urls: "turns:global.relay.metered.ca:443?transport=tcp", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" }
+            { urls: "turn:global.relay.metered.ca:443", username: "80d7f1b46c263f4738b8ee87", credential: "rudw4iGDMIQLP/Y6" }
         ]
     };
 
@@ -132,15 +134,14 @@
     let localStream = null;
     let peer = null;
     let activeCall = null;
-    let currentRoomId = null;
+    let currentRoom = null;
     let chatUnsub = null;
     let heartbeat = null;
     let isScreenSharing = false;
-    let originalVideoTrack = null;
 
     function showToast(msg) {
         const t = document.createElement('div'); t.className = 'toast'; t.innerText = msg;
-        document.body.appendChild(t); setTimeout(() => t.remove(), 2500);
+        document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
     }
 
     async function getLocalStream() {
@@ -157,9 +158,9 @@
         if (!online) { showToast(`${friendId} is offline`); return; }
         if (!await getLocalStream()) return;
         
-        currentRoomId = `call_${currentUser}_${friendId}_${Date.now()}`;
+        currentRoom = `call_${currentUser}_${friendId}_${Date.now()}`;
         await db.collection('calls').add({
-            from: currentUser, to: friendId, roomId: currentRoomId, status: 'ringing', timestamp: new Date()
+            from: currentUser, to: friendId, room: currentRoom, status: 'ringing', time: new Date()
         });
         
         document.getElementById('callDiv').classList.remove('hidden');
@@ -173,13 +174,13 @@
         activeCall.on('close', () => endCall());
         activeCall.on('error', () => { showToast("Call failed"); endCall(); });
         
-        setupChat(currentRoomId);
+        setupChatListener(currentRoom);
     }
 
     async function acceptCall(callId, fromId, roomId) {
         document.getElementById('incomingModal')?.remove();
         if (!await getLocalStream()) return;
-        currentRoomId = roomId;
+        currentRoom = roomId;
         document.getElementById('callDiv').classList.remove('hidden');
         document.getElementById('appDiv').classList.add('hidden');
         
@@ -190,7 +191,7 @@
             activeCall.on('close', () => endCall());
         }
         await db.collection('calls').doc(callId).delete();
-        setupChat(roomId);
+        setupChatListener(roomId);
     }
 
     async function declineCall(callId) {
@@ -204,7 +205,7 @@
         if (chatUnsub) chatUnsub();
         localStream = null;
         activeCall = null;
-        currentRoomId = null;
+        currentRoom = null;
         document.getElementById('callDiv').classList.add('hidden');
         document.getElementById('appDiv').classList.remove('hidden');
         document.getElementById('remoteVideo').srcObject = null;
@@ -214,7 +215,7 @@
 
     async function joinGroupCall(roomName) {
         if (!await getLocalStream()) return;
-        currentRoomId = roomName;
+        currentRoom = roomName;
         document.getElementById('callDiv').classList.remove('hidden');
         document.getElementById('appDiv').classList.add('hidden');
         
@@ -222,7 +223,7 @@
         const roomDoc = await roomRef.get();
         
         if (!roomDoc.exists) {
-            await roomRef.set({ creator: currentUser, participants: [currentUser], createdAt: new Date() });
+            await roomRef.set({ creator: currentUser, participants: [currentUser], created: new Date() });
             roomRef.onSnapshot(async (snap) => {
                 const data = snap.data();
                 if (data && data.participants && !activeCall) {
@@ -247,34 +248,41 @@
                 activeCall.on('close', () => endCall());
             }
         }
-        setupChat(roomName);
+        setupChatListener(roomName);
     }
 
-    function setupChat(roomId) {
+    async function createGroupRoom() {
+        const name = prompt("Room name:", "group_" + Date.now());
+        if (name) await joinGroupCall(name);
+    }
+
+    function setupChatListener(roomId) {
         if (chatUnsub) chatUnsub();
         const container = document.getElementById('chatMsgs');
         container.innerHTML = '';
-        chatUnsub = db.collection('groupChats').doc(roomId).collection('msgs').orderBy('time').onSnapshot(snap => {
-            snap.docChanges().forEach(ch => {
-                if (ch.type === 'added') {
-                    const m = ch.doc.data();
-                    const d = document.createElement('div');
-                    d.innerHTML = `<b>${escapeHtml(m.from)}:</b> ${escapeHtml(m.text)}`;
-                    container.appendChild(d);
-                    container.scrollTop = container.scrollHeight;
-                }
+        chatUnsub = db.collection('chats').doc(roomId).collection('msgs')
+            .orderBy('time')
+            .onSnapshot(snap => {
+                snap.docChanges().forEach(ch => {
+                    if (ch.type === 'added') {
+                        const msg = ch.doc.data();
+                        const div = document.createElement('div');
+                        div.innerHTML = `<b>${escapeHtml(msg.from)}:</b> ${escapeHtml(msg.text)}`;
+                        container.appendChild(div);
+                        container.scrollTop = container.scrollHeight;
+                    }
+                });
             });
-        });
     }
 
     async function sendChat() {
-        const inp = document.getElementById('chatInput');
-        const txt = inp.value.trim();
-        if (!txt || !currentRoomId) return;
-        await db.collection('groupChats').doc(currentRoomId).collection('msgs').add({
-            from: currentUser, text: txt, time: new Date()
+        const input = document.getElementById('chatInput');
+        const text = input.value.trim();
+        if (!text || !currentRoom) return;
+        await db.collection('chats').doc(currentRoom).collection('msgs').add({
+            from: currentUser, text: text, time: new Date()
         });
-        inp.value = '';
+        input.value = '';
     }
 
     async function toggleScreenShare() {
@@ -319,7 +327,7 @@
             document.getElementById('muteVideoBtn').innerHTML = v?.enabled ? '<i class="fas fa-video"></i> Video Off' : '<i class="fas fa-video-slash"></i> Video On';
         }
     }
-    function toggleChat() { document.getElementById('chatPanel').classList.toggle('hidden'); }
+    function toggleChat() { document.getElementById('chatSidebar').classList.toggle('hidden'); }
 
     async function initPeer() {
         return new Promise((res) => {
@@ -373,7 +381,7 @@
 
     async function initUser() {
         const r = await db.collection('users').doc(currentUser).get();
-        if (!r.exists) await db.collection('users').doc(currentUser).set({ username: currentUser, friends: [], createdAt: new Date() });
+        if (!r.exists) await db.collection('users').doc(currentUser).set({ username: currentUser, friends: [], created: new Date() });
         await loadFriends();
         setInterval(() => loadFriends(), 5000);
     }
@@ -386,7 +394,7 @@
                     const m = document.createElement('div'); m.id = 'incomingModal'; m.className = 'incoming-modal';
                     m.innerHTML = `<div style="width:60px;height:60px;background:#00d4ff20;border-radius:50%;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;"><i class="fas fa-phone" style="font-size:28px;color:#00d4ff;"></i></div>
                         <h3>Incoming Call</h3><p>from <strong>${escapeHtml(c.from)}</strong></p>
-                        <div><button class="accept" onclick="acceptCall('${doc.id}', '${c.from}', '${c.roomId}')">Accept</button>
+                        <div><button class="accept" onclick="acceptCall('${doc.id}', '${c.from}', '${c.room}')">Accept</button>
                         <button class="decline" onclick="declineCall('${doc.id}')">Decline</button></div>`;
                     document.body.appendChild(m);
                 }
@@ -401,7 +409,7 @@
         const ref = db.collection('users').doc(name);
         const doc = await ref.get();
         if (!doc.exists) {
-            await ref.set({ username: name, friends: [], passwordHash: btoa(pass), createdAt: new Date() });
+            await ref.set({ username: name, friends: [], passwordHash: btoa(pass), created: new Date() });
         } else if (doc.data().passwordHash !== btoa(pass)) {
             document.getElementById('authError').innerText = 'Wrong password';
             return;
@@ -439,13 +447,13 @@
     document.getElementById('logoutBtn').onclick = logout;
     document.getElementById('addFriendBtn').onclick = () => { const n = document.getElementById('friendName').value.trim().toLowerCase(); if (n) addFriend(n); };
     document.getElementById('joinGroupBtn').onclick = () => { const r = document.getElementById('groupRoomName').value.trim(); if (r) joinGroupCall(r); else showToast("Enter room name"); };
-    document.getElementById('createGroupBtn').onclick = () => { const r = prompt("Room name:", "group_" + Date.now()); if (r) joinGroupCall(r); };
+    document.getElementById('createGroupBtn').onclick = createGroupRoom;
     document.getElementById('hangupBtn').onclick = endCall;
     document.getElementById('muteMicBtn').onclick = toggleMic;
     document.getElementById('muteVideoBtn').onclick = toggleVideo;
     document.getElementById('shareScreenBtn').onclick = toggleScreenShare;
-    document.getElementById('chatToggleBtn').onclick = toggleChat;
-    document.getElementById('sendChat').onclick = sendChat;
+    document.getElementById('chatBtn').onclick = toggleChat;
+    document.getElementById('sendChatBtn').onclick = sendChat;
     document.getElementById('chatInput').addEventListener('keypress', e => { if (e.key === 'Enter') sendChat(); });
 </script>
 </body>
