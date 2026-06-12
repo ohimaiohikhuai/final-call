@@ -2,25 +2,283 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Chatrix · Working Video Calls</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Chatrix · Secure Video Calls</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0a0a; font-family: system-ui, sans-serif; padding: 20px; }
-        .container { max-width: 500px; margin: 0 auto; }
-        video { width: 100%; background: #000; border-radius: 16px; margin: 10px 0; transform: scaleX(-1); }
-        .friend-item { background: #121212; border-radius: 24px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-        .call-btn { background: #00d4ff; border: none; padding: 8px 20px; border-radius: 30px; cursor: pointer; font-weight: bold; }
-        input, button { padding: 10px; border-radius: 30px; border: none; margin: 5px; }
-        .hidden { display: none; }
-        .call-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; padding: 20px; }
-        .call-header { display: flex; justify-content: space-between; margin-bottom: 20px; color: white; }
-        .auth-card { background: #121212; border-radius: 40px; padding: 32px; text-align: center; border: 1px solid #262626; }
-        .auth-card input { width: 100%; padding: 14px; background: #1f1f1f; border: none; border-radius: 60px; color: white; margin-bottom: 12px; }
-        .auth-card button { width: 100%; background: #00d4ff; border: none; padding: 14px; border-radius: 60px; font-weight: bold; cursor: pointer; }
-        .status { color: #888; font-size: 12px; margin-top: 5px; }
-        .online { color: #22c55e; }
-        .offline { color: #666; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        /* call overlay with smooth transitions */
+        .call-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000000;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 12px;
+            animation: fadeSlideUp 0.3s ease-out;
+        }
+
+        @keyframes fadeSlideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .videos-grid {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 0;
+        }
+
+        .video-wrapper {
+            flex: 1;
+            background: #121212;
+            border-radius: 28px;
+            overflow: hidden;
+            position: relative;
+            background-color: #0a0a0a;
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+            border: 1px solid #2c2c2c;
+            transition: all 0.2s;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+            display: block;
+        }
+
+        #localVideo {
+            transform: scaleX(-1);
+        }
+
+        .call-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(16px);
+            padding: 12px 20px;
+            border-radius: 60px;
+            color: white;
+            margin-bottom: 6px;
+            border: 0.5px solid rgba(255,255,255,0.15);
+        }
+
+        #callStatus {
+            font-weight: 600;
+            font-size: 0.85rem;
+            background: rgba(255,255,255,0.12);
+            padding: 6px 16px;
+            border-radius: 40px;
+            letter-spacing: 0.3px;
+        }
+
+        .control-bar {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            padding: 12px 20px;
+            background: rgba(18, 18, 18, 0.96);
+            backdrop-filter: blur(24px);
+            border-radius: 90px;
+            margin-top: 8px;
+            margin-bottom: 12px;
+            border: 0.5px solid #2e2e32;
+        }
+
+        .ctrl-btn {
+            background: #2c2c2e;
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 60px;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        }
+
+        .ctrl-btn:active {
+            transform: scale(0.92);
+        }
+
+        .ctrl-btn.danger-active {
+            background: #ff3b30;
+        }
+
+        .ctrl-btn.active {
+            background: #00d4ff;
+            color: #000;
+        }
+
+        .auth-card {
+            background: #121212;
+            border-radius: 44px;
+            padding: 36px 28px;
+            text-align: center;
+            border: 1px solid #262626;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 20px 35px -12px black;
+        }
+
+        .auth-card input {
+            width: 100%;
+            padding: 15px 18px;
+            background: #1e1e1e;
+            border: 1px solid #2e2e2e;
+            border-radius: 60px;
+            color: white;
+            margin-bottom: 14px;
+            font-size: 1rem;
+            transition: 0.2s;
+        }
+
+        .auth-card input:focus {
+            outline: none;
+            border-color: #00d4ff;
+            background: #252525;
+        }
+
+        .auth-card button {
+            width: 100%;
+            background: #00d4ff;
+            border: none;
+            padding: 15px;
+            border-radius: 60px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.2s;
+            color: #0a0a0a;
+        }
+
+        .auth-card button:active {
+            transform: scale(0.97);
+        }
+
+        .friend-item {
+            background: #121212;
+            border-radius: 28px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #262626;
+            transition: 0.1s;
+        }
+
+        .call-btn {
+            background: #00d4ff20;
+            border: 1px solid #00d4ff;
+            padding: 8px 22px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #00d4ff;
+            transition: 0.2s;
+        }
+
+        .call-btn:active {
+            transform: scale(0.94);
+            background: #00d4ff40;
+        }
+
+        .call-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .online-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #22c55e;
+            border-radius: 10px;
+            margin-right: 6px;
+            box-shadow: 0 0 4px #22c55e;
+        }
+
+        .offline-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #5f5f6b;
+            border-radius: 10px;
+            margin-right: 6px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .toast-notification {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1f1f1f;
+            backdrop-filter: blur(28px);
+            color: white;
+            padding: 12px 26px;
+            border-radius: 60px;
+            font-weight: 500;
+            z-index: 2000;
+            animation: floatFade 2.6s ease forwards;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            pointer-events: none;
+            border-left: 3px solid #00d4ff;
+            font-size: 0.9rem;
+        }
+
+        @keyframes floatFade {
+            0% { opacity: 0; transform: translateX(-50%) translateY(18px); }
+            12% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            85% { opacity: 1; transform: translateX(-50%) translateY(0); }
+            100% { opacity: 0; transform: translateX(-50%) translateY(18px); visibility: hidden; }
+        }
+
+        .brand {
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
     </style>
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
@@ -29,35 +287,51 @@
 <body>
 <div class="container">
     <div id="loginDiv" class="auth-card">
-        <h2 style="color:#00d4ff;">📞 Chatrix</h2>
-        <input type="text" id="loginName" placeholder="Username">
-        <input type="password" id="loginPass" placeholder="Password (min 4 chars)">
+        <div class="brand"><h2 style="color:#00d4ff; font-size: 1.9rem;">📞 Chatrix</h2><p style="color:#aaa; font-size: 13px; margin-top: 6px;">encrypted · smart calls</p></div>
+        <input type="text" id="loginName" placeholder="Username" autocomplete="off">
+        <input type="password" id="loginPass" placeholder="Password (min 4 characters)">
         <button id="loginBtn">Login / Sign Up</button>
-        <div id="loginError" class="status"></div>
+        <div id="loginError" class="status" style="color:#ff8a7a; margin-top: 12px;"></div>
     </div>
 
     <div id="appDiv" class="hidden">
-        <h2 style="color:#00d4ff;">Friends</h2>
-        <div style="display: flex; gap: 10px; margin: 15px 0;">
-            <input type="text" id="friendName" placeholder="Add friend username" style="flex:1">
-            <button id="addFriendBtn" style="background:#00d4ff20; border:1px solid #00d4ff; color:#00d4ff;">Add</button>
+        <div style="display: flex; justify-content: space-between; align-items: baseline;">
+            <h2 style="color:#00d4ff; font-size: 1.6rem;">👥 Friends</h2>
+            <span id="onlineBadge" style="background:#00d4ff20; padding:5px 12px; border-radius:30px; font-size:12px;">● secure</span>
+        </div>
+        <div style="display: flex; gap: 12px; margin: 18px 0 16px;">
+            <input type="text" id="friendName" placeholder="Add friend username" style="flex:1; background:#1f1f1f; color:white; border:1px solid #333; border-radius:60px; padding:12px 18px;">
+            <button id="addFriendBtn" style="background:#00d4ff10; border:1px solid #00d4ff; color:#00d4ff; font-weight:bold; border-radius:60px; padding:0 18px;">➕ Add</button>
         </div>
         <div id="friendsList"></div>
-        <p style="color:#666; font-size:11px; text-align:center; margin-top:20px;">🔐 Works across devices · TURN enabled</p>
+        <p style="color:#4a4a55; font-size:11px; text-align:center; margin-top: 28px;">🔐 WebRTC + TURN · Screen share & privacy</p>
     </div>
 </div>
 
 <div id="callOverlay" class="call-overlay hidden">
     <div class="call-header">
-        <span id="callStatus">Connecting...</span>
-        <button id="hangupBtn" style="background:#ff3b30; border:none; padding:10px 20px; border-radius:30px; color:white; font-weight:bold;">End Call</button>
+        <span id="callStatus">🔗 Connecting...</span>
+        <button id="hangupBtn" style="background:#ff3b30; border:none; padding:8px 20px; border-radius:60px; color:white; font-weight:600; font-size:0.85rem; cursor:pointer;">End Call</button>
     </div>
-    <video id="localVideo" autoplay muted playsinline></video>
-    <video id="remoteVideo" autoplay playsinline></video>
+    
+    <div class="videos-grid">
+        <div class="video-wrapper">
+            <video id="remoteVideo" autoplay playsinline></video>
+        </div>
+        <div class="video-wrapper">
+            <video id="localVideo" autoplay muted playsinline></video>
+        </div>
+    </div>
+    
+    <div class="control-bar">
+        <button id="toggleMicBtn" class="ctrl-btn" title="Mute / Unmute">🎤</button>
+        <button id="toggleVideoBtn" class="ctrl-btn" title="Disable / Enable Camera">📹</button>
+        <button id="shareScreenBtn" class="ctrl-btn" title="Share Screen">🖥️</button>
+    </div>
 </div>
 
 <script>
-    // Firebase Config
+    // ========== FIREBASE CONFIG (working) ==========
     const firebaseConfig = {
         apiKey: "AIzaSyAW4j8PG_rzXIe8Lj8lLMnSSjZSUnLkhTk",
         authDomain: "tiktok-211df.firebaseapp.com",
@@ -69,10 +343,11 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    // ========== YOUR TURN CREDENTIALS FROM METERED ==========
+    // ========== TURN CONFIGURATION (metered, robust) ==========
     const TURN_CONFIG = {
         iceServers: [
             { urls: "stun:stun.relay.metered.ca:80" },
+            { urls: "stun:stun.l.google.com:19302" },
             {
                 urls: "turn:global.relay.metered.ca:80",
                 username: "80d7f1b46c263f4738b8ee87",
@@ -95,208 +370,440 @@
             },
         ],
     };
-    // ==========================================================
 
+    // ---------- GLOBALS ----------
     let currentUser = null;
     let localStream = null;
     let currentPeer = null;
     let currentCall = null;
     let heartbeatInterval = null;
+    let isMicMuted = false;
+    let isVideoMuted = false;
+    let isScreenSharing = false;
+    let originalBackupStream = null;
+    let activeCallFriendId = null;
+    let activeCallListenerUnsub = null;
+    let activeDataChannel = null;
 
-    async function getCamera() {
-        try {
-            if (localStream) localStream.getTracks().forEach(t => t.stop());
-            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-            document.getElementById('localVideo').srcObject = localStream;
-            return true;
-        } catch(e) { 
-            alert("Camera/microphone access needed for calls");
-            return false; 
+    // DOM Elements
+    const loginDiv = document.getElementById('loginDiv');
+    const appDiv = document.getElementById('appDiv');
+    const callOverlay = document.getElementById('callOverlay');
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const callStatusSpan = document.getElementById('callStatus');
+    const toggleMicBtn = document.getElementById('toggleMicBtn');
+    const toggleVideoBtn = document.getElementById('toggleVideoBtn');
+    const shareScreenBtn = document.getElementById('shareScreenBtn');
+    const hangupBtn = document.getElementById('hangupBtn');
+
+    // toast helper
+    function showToast(message, isError = false) {
+        const existing = document.querySelector('.toast-notification');
+        if (existing) existing.remove();
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.textContent = message;
+        if (isError) toast.style.borderLeftColor = "#ff3b30";
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2700);
+    }
+
+    // graceful call termination (full cleanup)
+    async function terminateCall(byLocalUser = true, reason = "user_hangup") {
+        if (activeCallListenerUnsub) {
+            activeCallListenerUnsub();
+            activeCallListenerUnsub = null;
+        }
+        if (currentCall) {
+            try {
+                // notify remote via dataChannel if open
+                if (activeDataChannel && activeDataChannel.readyState === "open") {
+                    activeDataChannel.send(JSON.stringify({ type: "callEnd", from: currentUser }));
+                }
+                currentCall.close();
+            } catch(e) {}
+            currentCall = null;
+        }
+        if (remoteVideo.srcObject) {
+            const oldStream = remoteVideo.srcObject;
+            if (oldStream && oldStream.getTracks) oldStream.getTracks().forEach(t => t.stop());
+            remoteVideo.srcObject = null;
+        }
+        callOverlay.classList.add('hidden');
+        callStatusSpan.innerText = "";
+        if (activeCallFriendId && !byLocalUser) {
+            showToast(`🔴 Call ended by ${activeCallFriendId}`, true);
+        } else if (byLocalUser && reason !== "remote_auto") {
+            showToast("📴 Call ended", false);
+        }
+        activeCallFriendId = null;
+        if (isScreenSharing) {
+            isScreenSharing = false;
+            shareScreenBtn.style.background = "#2c2c2e";
+            shareScreenBtn.textContent = "🖥️";
+        }
+        activeDataChannel = null;
+    }
+
+    // called when remote ends call
+    function remoteEndedCall() {
+        if (!callOverlay.classList.contains('hidden')) {
+            terminateCall(false, "remote_end");
         }
     }
 
-    async function startCall(friendId) {
-        const callDiv = document.getElementById('callOverlay');
-        const callStatus = document.getElementById('callStatus');
-        callDiv.classList.remove('hidden');
-        callStatus.innerText = "📞 Calling...";
-        
-        const ok = await getCamera();
-        if (!ok) return;
-        
-        const friendDoc = await db.collection('peers').doc(friendId).get();
-        if (!friendDoc.exists) {
-            alert(`${friendId} is offline`);
-            callDiv.classList.add('hidden');
+    // get user media with error handling
+    async function getLocalMediaStream() {
+        try {
+            if (localStream) {
+                localStream.getTracks().forEach(t => {
+                    if (t.readyState === 'live') t.stop();
+                });
+            }
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            return stream;
+        } catch (err) {
+            console.error("media error", err);
+            throw new Error("Camera/Mic access denied");
+        }
+    }
+
+    async function replaceStream(newStream) {
+        if (localStream) {
+            const oldTracks = localStream.getTracks();
+            oldTracks.forEach(t => {
+                if (t.readyState === 'live' && !newStream.getTracks().includes(t)) t.stop();
+            });
+        }
+        localStream = newStream;
+        localVideo.srcObject = localStream;
+        if (currentCall && currentCall.peerConnection) {
+            const senders = currentCall.peerConnection.getSenders();
+            const audioTrack = localStream.getAudioTracks()[0];
+            const videoTrack = localStream.getVideoTracks()[0];
+            senders.forEach(sender => {
+                if (sender.track && sender.track.kind === 'audio' && audioTrack) sender.replaceTrack(audioTrack);
+                if (sender.track && sender.track.kind === 'video' && videoTrack) sender.replaceTrack(videoTrack);
+            });
+        }
+        if (localStream.getAudioTracks()[0]) {
+            isMicMuted = !localStream.getAudioTracks()[0].enabled;
+            updateMicUI();
+        }
+        if (localStream.getVideoTracks()[0]) {
+            isVideoMuted = !localStream.getVideoTracks()[0].enabled;
+            updateVideoUI();
+        }
+    }
+
+    function updateMicUI() {
+        if (isMicMuted) {
+            toggleMicBtn.style.background = "#ff3b30";
+            toggleMicBtn.textContent = "🔇";
+        } else {
+            toggleMicBtn.style.background = "#2c2c2e";
+            toggleMicBtn.textContent = "🎤";
+        }
+    }
+
+    function updateVideoUI() {
+        if (isVideoMuted) {
+            toggleVideoBtn.style.background = "#ff3b30";
+            toggleVideoBtn.textContent = "🚫📹";
+        } else {
+            toggleVideoBtn.style.background = "#2c2c2e";
+            toggleVideoBtn.textContent = "📹";
+        }
+    }
+
+    async function toggleMic() {
+        if (!localStream) return;
+        const audio = localStream.getAudioTracks()[0];
+        if (audio) {
+            audio.enabled = !audio.enabled;
+            isMicMuted = !audio.enabled;
+            updateMicUI();
+        }
+    }
+
+    async function toggleVideo() {
+        if (!localStream) return;
+        const video = localStream.getVideoTracks()[0];
+        if (video) {
+            video.enabled = !video.enabled;
+            isVideoMuted = !video.enabled;
+            updateVideoUI();
+        }
+    }
+
+    // screen share with restoration
+    async function startScreenShare() {
+        if (!localStream) { showToast("No active stream", true); return; }
+        if (isScreenSharing) {
+            await stopScreenShare();
             return;
         }
-        
-        const friendPeerId = friendDoc.data().peerId;
-        const call = currentPeer.call(friendPeerId, localStream);
-        currentCall = call;
-        
-        call.on('stream', (remoteStream) => {
-            document.getElementById('remoteVideo').srcObject = remoteStream;
-            callStatus.innerText = "🎥 In call";
-        });
-        
-        call.on('close', () => {
-            callDiv.classList.add('hidden');
-            document.getElementById('remoteVideo').srcObject = null;
-        });
-        
-        call.on('error', (err) => {
-            console.error("Call error:", err);
-            alert("Call failed. Check if other user is online.");
-            callDiv.classList.add('hidden');
-        });
+        try {
+            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+            if (!originalBackupStream) {
+                originalBackupStream = await getLocalMediaStream();
+            }
+            const currentAudio = localStream.getAudioTracks();
+            const combined = new MediaStream();
+            currentAudio.forEach(t => combined.addTrack(t));
+            const screenVideo = screenStream.getVideoTracks()[0];
+            combined.addTrack(screenVideo);
+            screenVideo.onended = () => { if (isScreenSharing) stopScreenShare(); };
+            await replaceStream(combined);
+            isScreenSharing = true;
+            shareScreenBtn.style.background = "#00d4ff";
+            shareScreenBtn.textContent = "🖥️✓";
+            if (isVideoMuted) { isVideoMuted = false; updateVideoUI(); }
+        } catch (err) {
+            showToast("Screen share failed", true);
+        }
     }
 
-    function listenForCalls() {
-        if (!currentPeer) return;
-        currentPeer.on('call', async (call) => {
-            const callDiv = document.getElementById('callOverlay');
-            const callStatus = document.getElementById('callStatus');
-            callDiv.classList.remove('hidden');
-            callStatus.innerText = "📞 Incoming call...";
-            
-            const ok = await getCamera();
-            if (!ok) return;
-            
-            call.answer(localStream);
+    async function stopScreenShare() {
+        if (!isScreenSharing) return;
+        let fallback = originalBackupStream ? originalBackupStream : await getLocalMediaStream();
+        if (!fallback.getVideoTracks().length || fallback.getVideoTracks()[0].readyState === 'ended') {
+            fallback = await getLocalMediaStream();
+        }
+        await replaceStream(fallback);
+        isScreenSharing = false;
+        shareScreenBtn.style.background = "#2c2c2e";
+        shareScreenBtn.textContent = "🖥️";
+        originalBackupStream = null;
+    }
+
+    // establish call with complete signaling and datachannel + firestore backup
+    async function startCall(friendUsername) {
+        if (activeCallFriendId) {
+            showToast("Already in a call", true);
+            return;
+        }
+        activeCallFriendId = friendUsername;
+        callOverlay.classList.remove('hidden');
+        callStatusSpan.innerText = `📞 Calling ${friendUsername}...`;
+        try {
+            if (!localStream || localStream.getVideoTracks().length === 0) {
+                const fresh = await getLocalMediaStream();
+                await replaceStream(fresh);
+            }
+            const friendDoc = await db.collection('peers').doc(friendUsername).get();
+            if (!friendDoc.exists) {
+                showToast(`${friendUsername} is offline`, true);
+                terminateCall(true, "local");
+                return;
+            }
+            const targetPeerId = friendDoc.data().peerId;
+            const call = currentPeer.call(targetPeerId, localStream);
             currentCall = call;
             
             call.on('stream', (remoteStream) => {
-                document.getElementById('remoteVideo').srcObject = remoteStream;
-                callStatus.innerText = "🎥 In call";
+                remoteVideo.srcObject = remoteStream;
+                callStatusSpan.innerText = "🎥 Connected · secure";
             });
+            call.on('close', () => { if (!callOverlay.classList.contains('hidden')) remoteEndedCall(); });
+            call.on('error', (err) => { console.error(err); terminateCall(true, "error"); showToast("Call disconnected", true); });
             
-            call.on('close', () => {
-                callDiv.classList.add('hidden');
-                document.getElementById('remoteVideo').srcObject = null;
-            });
+            const pc = call.peerConnection;
+            if (pc) {
+                pc.ondatachannel = (event) => {
+                    const channel = event.channel;
+                    activeDataChannel = channel;
+                    channel.onmessage = (msg) => {
+                        try {
+                            const data = JSON.parse(msg.data);
+                            if (data.type === "callEnd") remoteEndedCall();
+                        } catch(e) {}
+                    };
+                };
+                const sendChan = pc.createDataChannel("callControl");
+                sendChan.onopen = () => { activeDataChannel = sendChan; };
+            }
+            // firestore backup for call termination signal
+            const unsub = db.collection('callSignals').where('endedBy', '==', friendUsername).where('timestamp', '>', Date.now() - 8000)
+                .onSnapshot((snap) => {
+                    snap.docChanges().forEach((ch) => {
+                        if (ch.type === 'added' && activeCallFriendId === friendUsername && !callOverlay.classList.contains('hidden')) {
+                            remoteEndedCall();
+                            unsub();
+                        }
+                    });
+                });
+            activeCallListenerUnsub = unsub;
+        } catch (err) {
+            console.error(err);
+            terminateCall(true, "local");
+            showToast("Call error: network issue", true);
+        }
+    }
+
+    function listenIncomingCalls() {
+        if (!currentPeer) return;
+        currentPeer.on('call', async (incomingCall) => {
+            if (activeCallFriendId) {
+                incomingCall.close();
+                showToast("Busy in another call", true);
+                return;
+            }
+            activeCallFriendId = "caller";
+            callOverlay.classList.remove('hidden');
+            callStatusSpan.innerText = "📲 Incoming call...";
+            try {
+                if (!localStream || localStream.getVideoTracks().length === 0) {
+                    const freshStream = await getLocalMediaStream();
+                    await replaceStream(freshStream);
+                }
+                incomingCall.answer(localStream);
+                currentCall = incomingCall;
+                incomingCall.on('stream', (remoteStream) => {
+                    remoteVideo.srcObject = remoteStream;
+                    callStatusSpan.innerText = "🎙️ Live call";
+                });
+                incomingCall.on('close', () => remoteEndedCall());
+                const pc = incomingCall.peerConnection;
+                if (pc) {
+                    pc.ondatachannel = (event) => {
+                        const ch = event.channel;
+                        activeDataChannel = ch;
+                        ch.onmessage = (ev) => {
+                            try {
+                                const msg = JSON.parse(ev.data);
+                                if (msg.type === "callEnd") remoteEndedCall();
+                            } catch(e) {}
+                        };
+                    };
+                    const outChan = pc.createDataChannel("callControl");
+                    outChan.onopen = () => { activeDataChannel = outChan; };
+                }
+            } catch (err) {
+                terminateCall(true, "local");
+                showToast("Failed to answer call", true);
+            }
         });
     }
 
-    async function initPeer() {
+    async function initPeerAndLogin() {
         return new Promise((resolve) => {
             const peer = new Peer(null, { config: TURN_CONFIG });
             peer.on('open', (id) => {
                 currentPeer = peer;
-                listenForCalls();
+                listenIncomingCalls();
                 resolve(id);
             });
-            peer.on('error', (err) => console.log("Peer error:", err));
+            peer.on('error', (e) => console.warn("Peer error", e));
         });
     }
 
-    async function setStatus(userId, online) {
-        await db.collection('presence').doc(userId).set({ online, lastSeen: new Date() }, { merge: true });
+    async function setPresence(online) {
+        await db.collection('presence').doc(currentUser).set({ online, lastSeen: new Date() }, { merge: true });
     }
 
-    async function getStatus(userId) {
+    async function getFriendStatus(userId) {
         const snap = await db.collection('presence').doc(userId).get();
         return snap.exists ? snap.data().online : false;
     }
 
     async function startHeartbeat() {
         if (heartbeatInterval) clearInterval(heartbeatInterval);
-        await setStatus(currentUser, true);
-        heartbeatInterval = setInterval(() => setStatus(currentUser, true), 15000);
-        window.addEventListener('beforeunload', () => setStatus(currentUser, false));
+        await setPresence(true);
+        heartbeatInterval = setInterval(() => setPresence(true), 14000);
+        window.addEventListener('beforeunload', () => setPresence(false));
     }
 
-    async function sendFriendRequest(username) {
-        if (username === currentUser) { alert("Can't add yourself"); return; }
+    async function addFriend(friendName) {
+        if (friendName === currentUser) { showToast("Can't add yourself", true); return; }
         const userRef = db.collection('users').doc(currentUser);
-        const doc = await userRef.get();
-        const friends = doc.exists ? doc.data().friends || [] : [];
-        if (friends.includes(username)) { alert("Already friends"); return; }
-        await userRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(username) });
-        await db.collection('users').doc(username).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser) });
-        loadFriends();
+        const docSnap = await userRef.get();
+        let friends = docSnap.exists ? docSnap.data().friends || [] : [];
+        if (friends.includes(friendName)) { showToast("Already friends", true); return; }
+        await userRef.update({ friends: firebase.firestore.FieldValue.arrayUnion(friendName) });
+        await db.collection('users').doc(friendName).update({ friends: firebase.firestore.FieldValue.arrayUnion(currentUser) });
+        showToast(`➕ ${friendName} added`, false);
+        loadFriendsList();
     }
 
-    async function loadFriends() {
+    async function loadFriendsList() {
         const doc = await db.collection('users').doc(currentUser).get();
         const friends = doc.exists ? doc.data().friends || [] : [];
         const container = document.getElementById('friendsList');
         if (!container) return;
-        
         if (friends.length === 0) {
-            container.innerHTML = '<div style="text-align:center; color:#666; padding:30px;">No friends yet. Add someone!</div>';
+            container.innerHTML = '<div style="text-align:center; color:#5a5a6a; padding:34px;">✨ No friends yet. Add someone to call!</div>';
             return;
         }
-        
         let html = '';
         for (const f of friends) {
-            const online = await getStatus(f);
+            const online = await getFriendStatus(f);
             html += `<div class="friend-item">
-                <div><strong>${f}</strong> <span class="${online ? 'online' : 'offline'}">${online ? '● Online' : '○ Offline'}</span></div>
-                <button class="call-btn" onclick="startCall('${f}')" ${!online ? 'disabled' : ''}>📞 Call</button>
+                <div><strong style="font-size:1.05rem;">${f}</strong> 
+                <span style="margin-left: 8px; font-size:0.75rem;">${online ? '<span class="online-dot"></span>Online' : '<span class="offline-dot"></span>Offline'}</span></div>
+                <button class="call-btn" data-friend="${f}" ${!online ? 'disabled' : ''}>📞 Call</button>
             </div>`;
         }
         container.innerHTML = html;
+        document.querySelectorAll('.call-btn').forEach(btn => {
+            if (!btn.disabled) {
+                const friendId = btn.getAttribute('data-friend');
+                btn.onclick = () => startCall(friendId);
+            }
+        });
     }
 
-    async function initUser() {
-        const ref = db.collection('users').doc(currentUser);
-        if (!(await ref.get()).exists) {
-            await ref.set({ username: currentUser, friends: [], createdAt: new Date() });
+    async function initUserApp() {
+        const userRef = db.collection('users').doc(currentUser);
+        if (!(await userRef.get()).exists) {
+            await userRef.set({ username: currentUser, friends: [], createdAt: new Date() });
         }
-        await loadFriends();
-        setInterval(() => loadFriends(), 5000);
+        await loadFriendsList();
+        setInterval(() => loadFriendsList(), 6000);
     }
 
     async function handleAuth() {
         const username = document.getElementById('loginName').value.trim().toLowerCase();
         const password = document.getElementById('loginPass').value;
         const errorDiv = document.getElementById('loginError');
-        
         if (!username || password.length < 4) {
-            errorDiv.innerText = 'Username and password (min 4 chars)';
+            errorDiv.innerText = 'Username & password (min 4 chars)';
             return;
         }
-        
-        const userRef = db.collection('users').doc(username);
-        const doc = await userRef.get();
-        
-        if (!doc.exists) {
-            await userRef.set({ username, friends: [], passwordHash: btoa(password), createdAt: new Date() });
+        const userDoc = await db.collection('users').doc(username).get();
+        if (!userDoc.exists) {
+            await db.collection('users').doc(username).set({ username, passwordHash: btoa(password), friends: [], createdAt: new Date() });
             errorDiv.innerText = '✅ Account created!';
-        } else if (doc.data().passwordHash !== btoa(password)) {
+        } else if (userDoc.data().passwordHash !== btoa(password)) {
             errorDiv.innerText = '❌ Wrong password';
             return;
         }
-        
         currentUser = username;
-        
-        const peerId = await initPeer();
+        const peerId = await initPeerAndLogin();
         await db.collection('peers').doc(username).set({ peerId });
-        
         await startHeartbeat();
-        await initUser();
-        
-        for (const u of ['Alice', 'Bob', 'Charlie']) {
-            if (u !== username) await setStatus(u, true);
-        }
-        
-        document.getElementById('loginDiv').style.display = 'none';
-        document.getElementById('appDiv').classList.remove('hidden');
+        await initUserApp();
+        try {
+            const previewStream = await getLocalMediaStream();
+            await replaceStream(previewStream);
+            originalBackupStream = null;
+        } catch (e) { console.warn("camera deferred"); }
+        loginDiv.style.display = 'none';
+        appDiv.classList.remove('hidden');
         errorDiv.innerText = '';
     }
 
     document.getElementById('loginBtn').onclick = handleAuth;
     document.getElementById('addFriendBtn').onclick = () => {
         const name = document.getElementById('friendName').value.trim().toLowerCase();
-        if (name) sendFriendRequest(name);
+        if (name) addFriend(name);
+        document.getElementById('friendName').value = '';
     };
-    document.getElementById('hangupBtn').onclick = () => {
-        if (currentCall) currentCall.close();
-        document.getElementById('callOverlay').classList.add('hidden');
-        document.getElementById('remoteVideo').srcObject = null;
-    };
-    
+    hangupBtn.onclick = async () => { if (currentCall) terminateCall(true, "local"); else callOverlay.classList.add('hidden'); };
+    toggleMicBtn.onclick = toggleMic;
+    toggleVideoBtn.onclick = toggleVideo;
+    shareScreenBtn.onclick = startScreenShare;
     document.getElementById('loginName').addEventListener('keypress', e => { if (e.key === 'Enter') handleAuth(); });
     document.getElementById('loginPass').addEventListener('keypress', e => { if (e.key === 'Enter') handleAuth(); });
 </script>
